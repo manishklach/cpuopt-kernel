@@ -30,7 +30,7 @@ or present.
 ## Dry-run
 
 `--dry-run` computes and prints the exact intended changes without touching the system. It is
-mandatory support in v0.1 and is the recommended first step before any real profile change.
+mandatory support and is the recommended first step before any real profile change.
 
 ## Idle tuning
 
@@ -46,7 +46,7 @@ CPUOpt does not disable all C-states by default.
 ## Fan handling
 
 Fan control is platform-specific and often owned by firmware, ACPI, an embedded controller,
-or a BMC. v0.1 can inspect hwmon PWM-related files when explicitly requested but does not
+or a BMC. v0.2 can inspect hwmon PWM-related files when explicitly requested but does not
 perform fan writes. Reducing fan speed is not treated as CPU optimization.
 
 ## Platform-specific limitations

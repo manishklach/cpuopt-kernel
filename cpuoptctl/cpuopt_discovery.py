@@ -184,7 +184,7 @@ def discover(sysfs_root: str = "/sys") -> dict[str, Any]:
     vendor = str(data["vendor"])
     if "AuthenticAMD" in vendor:
         data = annotate_amd(data)
-    if "ARM" in vendor or "aarch64" in vendor or "arm" in str(data["arch"]).lower():
+    elif "ARM" in vendor or "aarch64" in vendor or "arm" in str(data["arch"]).lower():
         data = annotate_arm(data)
 
     return data

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Generator
 
 try:
     from .cpuopt_discovery import discover
@@ -47,7 +47,7 @@ def collect_sample(sysfs_root: str = "/sys") -> dict[str, Any]:
     }
 
 
-def monitor(sysfs_root: str = "/sys", interval: int = 1) -> list[dict[str, Any]]:
+def monitor(sysfs_root: str = "/sys", interval: int = 1) -> Generator[dict[str, Any], None, None]:
     samples = []
     try:
         while True:

@@ -7,8 +7,9 @@ import unittest
 from pathlib import Path
 
 from cpuoptctl.cpuopt_discovery import discover
+from cpuoptctl.cpuopt_apply import state_path
 from cpuoptctl.cpuopt_profiles import propose_profile
-from cpuoptctl.cpuoptctl import _state_path, cmd_profile
+from cpuoptctl.cpuoptctl import cmd_profile
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -52,7 +53,7 @@ class ProfileTests(unittest.TestCase):
                 },
             )()
             cmd_profile(args)
-            snapshot = _state_path(temp_dir)
+            snapshot = state_path(temp_dir)
             self.assertTrue(snapshot.exists())
             data = json.loads(snapshot.read_text(encoding="utf-8"))
             self.assertGreater(len(data["entries"]), 0)

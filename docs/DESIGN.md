@@ -38,7 +38,7 @@ keeps dry-run, testing, and restore behavior simple:
 
 ## Vendor backends
 
-Intel v0.1 supports:
+Intel v0.2 supports:
 
 - `intel_pstate` detection
 - EPP selection using available preference files
@@ -70,7 +70,7 @@ The `kernel/` directory sketches a conservative policy module that could eventua
 - `/sys/kernel/cpuopt/telemetry`
 - `/sys/kernel/cpuopt/safe_mode`
 
-That module should integrate with CPUFreq, thermal, and vendor backends, but v0.1 keeps all
+That module should integrate with CPUFreq, thermal, and vendor backends, but v0.2 keeps all
 risky logic out of kernel space.
 
 ## Future MSR guardrails

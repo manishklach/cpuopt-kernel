@@ -2,9 +2,9 @@
 
 CPUOpt-Kernel is a safety-first Linux systems project. Contributions are welcome, but every
 change must preserve the core rules:
+- no raw MSR writes in v0.2
 
-- no raw MSR writes in v0.1
-- no fan writes in v0.1
+- no fan writes in v0.2
 - no thermal protection bypass
 - no overclocking or voltage control
 - all profile writes remain reversible

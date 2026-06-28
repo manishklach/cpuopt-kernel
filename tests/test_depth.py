@@ -85,6 +85,64 @@ class DepthFeatureTests(unittest.TestCase):
         output = buf.getvalue()
         self.assertIn("Profile comparison unavailable", output)
 
+    def test_msr_decode_fields(self) -> None:
+        from cpuoptctl.cpuopt_msr import _decode_fields
+
+        epb = _decode_fields("IA32_ENERGY_PERF_BIAS", 0x6)
+        self.assertEqual(epb["bias"], 6)
+
+        caps = _decode_fields("IA32_HWP_CAPABILITIES", 0x08070605)
+        self.assertEqual(caps["highest_performance"], 5)
+        self.assertEqual(caps["guaranteed_performance"], 6)
+        self.assertEqual(caps["most_efficient_performance"], 7)
+        self.assertEqual(caps["lowest_performance"], 8)
+
+        hreq = _decode_fields("IA32_HWP_REQUEST", 0x04030201)
+        self.assertEqual(hreq["minimum_performance"], 1)
+        self.assertEqual(hreq["maximum_performance"], 2)
+        self.assertEqual(hreq["desired_performance"], 3)
+        self.assertEqual(hreq["energy_performance_preference"], 4)
+
+        hstat = _decode_fields("IA32_HWP_STATUS", 0x5)
+        self.assertEqual(hstat["change_to_guaranteed"], 1)
+        self.assertEqual(hstat["excursion_to_minimum"], 1)
+
+        therm = _decode_fields("IA32_PACKAGE_THERM_STATUS", 0x20001)
+        self.assertEqual(therm["thermal_status"], 1)
+        self.assertEqual(therm["digital_readout"], 2)
+
+        unknown = _decode_fields("UNKNOWN_MSR", 0x1234)
+        self.assertEqual(unknown, {})
+
+    def test_telemetry_collect_sample_from_fixture(self) -> None:
+        from cpuoptctl.cpuopt_telemetry import collect_sample
+
+        sample = collect_sample(sysfs_root=str(FIXTURES / "intel_hwp"))
+        self.assertIn("timestamp", sample)
+        self.assertIsInstance(sample.get("policies"), list)
+        if sample["policies"]:
+            self.assertIn("governor", sample["policies"][0])
+            self.assertIn("epp", sample["policies"][0])
+
+    def test_deepest_idle_states_selects_highest_latency(self) -> None:
+        from cpuoptctl.cpuopt_profiles import _deepest_idle_states
+
+        discovery = {
+            "sysfs_root": "/sys",
+            "cpuidle_states": [
+                {"cpu": "cpu0", "state": "state0", "latency": 10, "disable": "0"},
+                {"cpu": "cpu0", "state": "state1", "latency": 100, "disable": "0"},
+                {"cpu": "cpu1", "state": "state0", "latency": 10, "disable": "0"},
+                {"cpu": "cpu1", "state": "state1", "latency": 0, "disable": "0"},
+            ],
+        }
+        deepest = _deepest_idle_states(discovery)
+        self.assertEqual(len(deepest), 2)
+        by_cpu = {s["cpu"]: s for s in deepest}
+        self.assertEqual(by_cpu["cpu0"]["state"], "state1")
+        self.assertEqual(by_cpu["cpu1"]["state"], "state0")
+        self.assertIn("disable_path", by_cpu["cpu0"])
+
 
 if __name__ == "__main__":
     unittest.main()

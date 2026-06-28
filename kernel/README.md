@@ -9,4 +9,4 @@ The intended long-term interface is:
 - `/sys/kernel/cpuopt/telemetry`
 - `/sys/kernel/cpuopt/safe_mode`
 
-v0.1 keeps policy writes in user space and leaves risky functionality out of the kernel.
+v0.2 keeps policy writes in user space and leaves risky functionality out of the kernel.

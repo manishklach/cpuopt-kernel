@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 from pathlib import Path
 from typing import Any
 
 try:
+    from .cpuopt_apply import apply_writes, restore_from_snapshot, snapshot_existing, state_path
     from .cpuopt_compare import compare_profiles, format_compare_report
     from .cpuopt_discovery import discover
     from .cpuopt_doctor import build_doctor_report, format_doctor_report
@@ -14,8 +14,9 @@ try:
     from .cpuopt_msr import decode_intel_msrs, format_msr_report
     from .cpuopt_profiles import ProposedWrite, propose_profile
     from .cpuopt_telemetry import collect_sample, monitor
-    from .cpuopt_utils import json_ready, now_utc, read_text, save_json, write_text
+    from .cpuopt_utils import json_ready, now_utc, read_text, save_json
 except ImportError:
+    from cpuopt_apply import apply_writes, restore_from_snapshot, snapshot_existing, state_path
     from cpuopt_compare import compare_profiles, format_compare_report
     from cpuopt_discovery import discover
     from cpuopt_doctor import build_doctor_report, format_doctor_report
@@ -23,15 +24,7 @@ except ImportError:
     from cpuopt_msr import decode_intel_msrs, format_msr_report
     from cpuopt_profiles import ProposedWrite, propose_profile
     from cpuopt_telemetry import collect_sample, monitor
-    from cpuopt_utils import json_ready, now_utc, read_text, save_json, write_text
-
-
-def _state_path(state_dir: str) -> Path:
-    return Path(state_dir) / "last_state.json"
-
-
-def _write_log_path(state_dir: str) -> Path:
-    return Path(state_dir) / "write_log.jsonl"
+    from cpuopt_utils import json_ready, now_utc, read_text, save_json
 
 
 def _resolve_common_args(args: argparse.Namespace) -> None:
@@ -89,65 +82,6 @@ def _format_diff(writes: list[ProposedWrite]) -> str:
     return "\n".join(lines).rstrip()
 
 
-def _log_write(state_dir: str, entry: dict[str, Any]) -> None:
-    path = _write_log_path(state_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(entry, sort_keys=True) + "\n")
-
-
-def _snapshot_existing(writes: list[ProposedWrite], state_dir: str) -> dict[str, Any]:
-    snapshot_entries = []
-    for item in writes:
-        current = read_text(Path(item.path))
-        snapshot_entries.append({"path": item.path, "value": current})
-    snapshot = {"timestamp": now_utc(), "entries": snapshot_entries}
-    save_json(_state_path(state_dir), snapshot)
-    return snapshot
-
-
-def _validate_write(item: ProposedWrite, current_value: str | None) -> str | None:
-    path = Path(item.path)
-    if not path.exists():
-        return "missing"
-    if not path.is_file():
-        return "not-a-file"
-    if current_value is None:
-        return "unreadable-current-value"
-    if item.valid_values is not None and item.value not in item.valid_values:
-        return "invalid-value"
-    return None
-
-
-def _apply_writes(writes: list[ProposedWrite], state_dir: str, dry_run: bool) -> list[dict[str, Any]]:
-    results: list[dict[str, Any]] = []
-    for item in writes:
-        path = Path(item.path)
-        current_value = read_text(path)
-        result = {
-            "path": item.path,
-            "current": current_value,
-            "value": item.value,
-            "reason": item.reason,
-            "applied": False,
-        }
-        validation_error = _validate_write(item, current_value)
-        if validation_error is not None:
-            result["error"] = validation_error
-        elif dry_run:
-            result["dry_run"] = True
-        else:
-            try:
-                write_text(path, item.value)
-                result["applied"] = True
-            except OSError as exc:
-                result["error"] = str(exc)
-        if not dry_run:
-            _log_write(state_dir, result)
-        results.append(result)
-    return results
-
-
 def cmd_status(args: argparse.Namespace) -> int:
     _resolve_common_args(args)
     data = discover(sysfs_root=args.sysfs_root)
@@ -196,9 +130,9 @@ def cmd_profile(args: argparse.Namespace) -> int:
         print("Proposed writes:")
         for item in writes:
             print(f"- {item.path}: {item.current!r} -> {item.value!r} ({item.reason})")
-    if not args.dry_run:
-        _snapshot_existing(writes, args.state_dir)
-    results = _apply_writes(writes, args.state_dir, args.dry_run)
+    if not args.dry_run and writes:
+        snapshot_existing(writes, args.state_dir)
+    results = apply_writes(writes, args.state_dir, args.dry_run)
     if args.dry_run:
         print("Dry-run only; no files were modified.")
     else:
@@ -273,23 +207,24 @@ def cmd_compare(args: argparse.Namespace) -> int:
 
 def cmd_restore(args: argparse.Namespace) -> int:
     _resolve_common_args(args)
-    state_path = _state_path(args.state_dir)
-    if not state_path.exists():
+    sp = state_path(args.state_dir)
+    if not sp.exists():
         print("No restore snapshot found.")
         return 1
-    snapshot = json.loads(state_path.read_text(encoding="utf-8"))
-    restored = 0
-    for entry in snapshot.get("entries", []):
-        path = Path(entry["path"])
-        if not path.exists():
-            continue
-        try:
-            if entry["value"] is not None:
-                write_text(path, str(entry["value"]))
-            restored += 1
-            _log_write(args.state_dir, {"path": str(path), "restored": True, "value": entry["value"]})
-        except OSError as exc:
-            _log_write(args.state_dir, {"path": str(path), "restored": False, "error": str(exc)})
+    snapshot = json.loads(sp.read_text(encoding="utf-8"))
+    entries = snapshot.get("entries", [])
+    if not entries:
+        print("No entries in restore snapshot.")
+        return 0
+    pre_snapshot = {"timestamp": now_utc(), "entries": []}
+    for entry in entries:
+        current = read_text(Path(entry["path"]))
+        pre_snapshot["entries"].append({"path": entry["path"], "value": current})
+    try:
+        save_json(state_path(args.state_dir).with_suffix(".pre-restore.json"), pre_snapshot)
+    except OSError as exc:
+        print(f"Warning: could not save pre-restore snapshot ({exc})")
+    restored = restore_from_snapshot(snapshot, args.state_dir)
     print(f"Restored {restored} paths.")
     return 0
 

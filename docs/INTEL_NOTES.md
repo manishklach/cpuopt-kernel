@@ -1,6 +1,6 @@
 # Intel Notes
 
-Intel v0.1 focuses on safe Linux interfaces:
+Intel v0.2 focuses on safe Linux interfaces:
 
 - `intel_pstate`
 - Hardware P-states (HWP)
@@ -18,7 +18,7 @@ Intel v0.1 focuses on safe Linux interfaces:
 - EPB may appear as `energy_perf_bias`.
 - CPUFreq policies expose governors, min/max/current frequency, and related metadata.
 - C-states live under `cpu*/cpuidle/state*`.
-- Uncore frequency controls may exist on some platforms, but v0.1 reports them only as
+- Uncore frequency controls may exist on some platforms, but v0.2 reports them only as
   future work.
 
 ## Future Intel work

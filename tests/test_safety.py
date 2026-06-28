@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import io
+import shutil
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from dataclasses import replace
 from pathlib import Path
 
+from cpuoptctl.cpuopt_apply import apply_writes, state_path, write_log_path
 from cpuoptctl.cpuopt_discovery import discover
 from cpuoptctl.cpuopt_profiles import propose_profile
-from cpuoptctl.cpuoptctl import _apply_writes, _state_path, _write_log_path, cmd_profile
+from cpuoptctl.cpuoptctl import cmd_profile, cmd_restore
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -35,8 +39,8 @@ class SafetyTests(unittest.TestCase):
                 },
             )()
             cmd_profile(args)
-            self.assertFalse(_state_path(temp_dir).exists())
-            self.assertFalse(_write_log_path(temp_dir).exists())
+            self.assertFalse(state_path(temp_dir).exists())
+            self.assertFalse(write_log_path(temp_dir).exists())
         after = target.read_text(encoding="utf-8")
         self.assertEqual(before, after)
 
@@ -59,10 +63,51 @@ class SafetyTests(unittest.TestCase):
         epp_write = next(item for item in proposal["writes"] if item.path.endswith("energy_performance_preference"))
         invalid_write = replace(epp_write, valid_values=("balance_power",))
         with tempfile.TemporaryDirectory() as temp_dir:
-            results = _apply_writes([invalid_write], temp_dir, dry_run=False)
+            results = apply_writes([invalid_write], temp_dir, dry_run=False)
             self.assertEqual(results[0].get("error"), "invalid-value")
             target = Path(invalid_write.path)
             self.assertEqual(target.read_text(encoding="utf-8").strip(), "balance_performance")
+
+    def test_restore_creates_pre_restore_snapshot(self) -> None:
+        root = FIXTURES / "intel_hwp"
+        with tempfile.TemporaryDirectory() as temp_dir:
+            sysfs_root = Path(temp_dir) / "sysfs"
+            shutil.copytree(root, sysfs_root)
+            profile_args = type(
+                "Args",
+                (),
+                {
+                    "sysfs_root": str(sysfs_root),
+                    "state_dir": temp_dir,
+                    "profile_name": "performance",
+                    "allow_idle_tuning": False,
+                    "allow_fan_control": False,
+                    "experimental_fan_write": False,
+                    "allow_turbo_disable": False,
+                    "dry_run": False,
+                    "json": False,
+                    "diff": False,
+                },
+            )()
+            cmd_profile(profile_args)
+            restore_args = type(
+                "Args",
+                (),
+                {
+                    "sysfs_root": str(sysfs_root),
+                    "state_dir": temp_dir,
+                    "sysfs_root_local": None,
+                    "state_dir_local": None,
+                },
+            )()
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                ret = cmd_restore(restore_args)
+            self.assertEqual(ret, 0)
+            pre_restore = Path(temp_dir) / "last_state.pre-restore.json"
+            self.assertTrue(pre_restore.exists())
+            output = buf.getvalue()
+            self.assertIn("Restored", output)
 
 
 if __name__ == "__main__":

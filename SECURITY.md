@@ -8,7 +8,7 @@ important.
 
 ## Supported versions
 
-- `main`: supported for security reports during the pre-`v0.1.0` phase
+- `main`: supported for security reports during the pre-`v0.2.0` phase
 
 ## Reporting
 
@@ -25,7 +25,7 @@ GitHub Security Advisories for this repository.
 
 ## Safety boundaries
 
-The following are intentional non-features in `v0.1`:
+The following are intentional non-features in `v0.2`:
 
 - raw MSR writes
 - fan writes
@@ -33,4 +33,4 @@ The following are intentional non-features in `v0.1`:
 - voltage control
 - overclocking
 
-Reports asking for those capabilities will be treated as out of scope for `v0.1`.
+Reports asking for those capabilities will be treated as out of scope for `v0.2`.

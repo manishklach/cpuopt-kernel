@@ -124,7 +124,7 @@ def propose_profile(
     if profile_name == "quiet":
         warnings.append("Lower fan speed can reduce sustained performance.")
         if allow_fan_control and experimental_fan_write:
-            warnings.append("Fan writes remain intentionally unimplemented in v0.1.")
+            warnings.append("Fan writes remain intentionally unimplemented.")
 
     if profile_name == "ai-inference":
         recommendations.extend(
@@ -147,12 +147,15 @@ def _deepest_idle_states(discovery: dict[str, Any]) -> list[dict[str, Any]]:
     grouped: dict[str, dict[str, Any]] = {}
     for state in discovery.get("cpuidle_states", []):
         cpu = state.get("cpu")
-        latency = state.get("latency") or -1
+        latency_raw = state.get("latency")
+        latency = latency_raw if latency_raw is not None else -1
         disable_path = (
             f"{discovery['sysfs_root']}/devices/system/cpu/{cpu}/cpuidle/{state['state']}/disable"
         )
         candidate = dict(state)
         candidate["disable_path"] = disable_path
-        if cpu not in grouped or latency > (grouped[cpu].get("latency") or -1):
+        existing_latency_raw = grouped[cpu].get("latency") if cpu in grouped else None
+        existing_latency = existing_latency_raw if existing_latency_raw is not None else -1
+        if cpu not in grouped or latency > existing_latency:
             grouped[cpu] = candidate
     return list(grouped.values())

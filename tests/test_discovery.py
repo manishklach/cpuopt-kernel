@@ -21,6 +21,11 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(data["vendor"], "GenuineIntel")
         self.assertEqual(len(data["thermal"]["thermal_zones"]), 0)
 
+    def test_amd_discovery_detects_vendor(self) -> None:
+        data = discover(sysfs_root=str(FIXTURES / "amd_pstate"))
+        self.assertEqual(data["vendor"], "AuthenticAMD")
+        self.assertIn("AMD", " ".join(data.get("vendor_notes", [])))
+
 
 if __name__ == "__main__":
     unittest.main()

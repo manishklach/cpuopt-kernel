@@ -1,6 +1,6 @@
 # AMD Notes
 
-AMD support is discovery-first in v0.1.
+AMD support is discovery-first in v0.2.
 
 ## Areas of interest
 

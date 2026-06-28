@@ -3,7 +3,7 @@
 [![tests](https://github.com/manishklach/cpuopt-kernel/actions/workflows/tests.yml/badge.svg)](https://github.com/manishklach/cpuopt-kernel/actions/workflows/tests.yml)
 [![license](https://img.shields.io/badge/license-GPL--2.0--only-blue.svg)](https://github.com/manishklach/cpuopt-kernel/blob/main/LICENSE)
 [![python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![version](https://img.shields.io/badge/version-v0.1.0-informational.svg)](https://github.com/manishklach/cpuopt-kernel/blob/main/CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-v0.2.0-informational.svg)](https://github.com/manishklach/cpuopt-kernel/blob/main/CHANGELOG.md)
 
 CPUOpt-Kernel is not an overclocking tool. It is a safety-first CPU performance policy layer
 that discovers platform capabilities and maps them into reversible workload profiles such as
@@ -105,9 +105,9 @@ python3 -m unittest
 - Modified values are snapshotted to `last_state.json` before application.
 - `msr-read` is read-only telemetry only and never writes `/dev/cpu/*/msr`.
 - CPUOpt never writes firmware registers, BIOS settings, or BMC controls.
-- Fan writes are intentionally unimplemented in v0.1 even if fan inspection is enabled.
+- Fan writes are intentionally unimplemented even if fan inspection is enabled.
 
-See [docs/SAFETY.md](C:\Users\ManishKL\Documents\Playground\cpuopt-kernel\docs\SAFETY.md) for the full model.
+See [docs/SAFETY.md](docs/SAFETY.md) for the full model.
 
 ## Demo
 
