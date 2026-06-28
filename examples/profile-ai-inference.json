@@ -1,0 +1,10 @@
+{
+  "name": "ai-inference",
+  "intent": "Favor strong compute responsiveness while preserving NUMA and scheduler observability.",
+  "writes": {
+    "epp_preference_order": ["performance", "balance_performance"],
+    "governor_preference_order": ["performance", "schedutil"],
+    "turbo": "enable",
+    "uncore": "report-only-in-v0.1"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "latency",
+  "intent": "Prefer low-latency CPU response while warning about increased power and heat.",
+  "writes": {
+    "epp_preference_order": ["performance"],
+    "governor_preference_order": ["performance", "schedutil"],
+    "turbo": "enable",
+    "idle_tuning": "opt-in-only"
+  }
+}

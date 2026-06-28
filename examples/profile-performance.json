@@ -1,0 +1,9 @@
+{
+  "name": "performance",
+  "intent": "Prefer sustained boost and aggressive CPU response through existing kernel interfaces.",
+  "writes": {
+    "epp_preference_order": ["performance"],
+    "governor_preference_order": ["performance", "schedutil", "powersave"],
+    "turbo": "enable"
+  }
+}

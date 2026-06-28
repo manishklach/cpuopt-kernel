@@ -1,0 +1,6 @@
+config CPUOPT_POLICY
+	tristate "CPUOpt policy placeholder"
+	depends on SYSFS
+	help
+	  Placeholder CPUOpt policy module. v0.1 exposes design scaffolding only and
+	  does not perform risky register or firmware writes.

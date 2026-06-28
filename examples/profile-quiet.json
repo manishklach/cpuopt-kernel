@@ -1,0 +1,9 @@
+{
+  "name": "quiet",
+  "intent": "Reduce CPU aggressiveness before considering any platform-specific fan action.",
+  "writes": {
+    "epp_preference_order": ["power", "balance_power", "balance_performance"],
+    "governor_preference_order": ["powersave", "schedutil"],
+    "fan_control": "inspect-only-in-v0.1"
+  }
+}

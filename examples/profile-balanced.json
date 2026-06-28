@@ -1,0 +1,9 @@
+{
+  "name": "balanced",
+  "intent": "Prefer responsive but efficient defaults suitable for general-purpose workloads.",
+  "writes": {
+    "epp_preference_order": ["balance_performance", "balance_power", "default", "performance"],
+    "governor_preference_order": ["schedutil", "powersave", "performance"],
+    "turbo": "keep-enabled"
+  }
+}
