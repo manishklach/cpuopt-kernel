@@ -5,8 +5,14 @@
 [![python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![version](https://img.shields.io/badge/version-v0.1.0-informational.svg)](https://github.com/manishklach/cpuopt-kernel/blob/main/CHANGELOG.md)
 
-CPUOpt-Kernel translates vendor CPU performance controls into safe Linux policy profiles.
-It prefers existing kernel interfaces over raw register writes and treats thermal and fan
+CPUOpt-Kernel is not an overclocking tool. It is a safety-first CPU performance policy layer
+that discovers platform capabilities and maps them into reversible workload profiles such as
+`performance`, `balanced`, `latency`, `quiet`, and `ai-inference`. The project starts with a
+sysfs-first Intel MVP and is designed for future AMD `amd-pstate` and ARM
+SCMI/heterogeneous-topology backends.
+
+CPUOpt-Kernel translates vendor CPU performance controls into safe Linux policy profiles. It
+prefers existing kernel interfaces over raw register writes and treats thermal and fan
 control as platform concerns, not as a shortcut for unsafe CPU tuning.
 
 Version `v0.1` is intentionally conservative:
