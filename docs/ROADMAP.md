@@ -32,3 +32,13 @@
 ## Milestone 7
 
 - guarded MSR write support for explicitly supported models only
+
+## v0.1.0 release checklist
+
+- Python files pass `py_compile`
+- `python -m unittest` passes
+- dry-run performs zero filesystem modifications
+- Intel fixture-based `status` and `profile --dry-run` commands succeed
+- README, SAFETY, and testing docs match implementation behavior
+- CI is enabled on GitHub
+- license, security, contributing, and changelog files are present

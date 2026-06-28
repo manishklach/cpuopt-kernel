@@ -16,6 +16,7 @@ class ProposedWrite:
     current: str | None
     value: str
     reason: str
+    valid_values: tuple[str, ...] | None = None
 
 
 def _maybe_add_write(
@@ -30,7 +31,15 @@ def _maybe_add_write(
         return
     if valid_values is not None and value not in valid_values:
         return
-    writes.append(ProposedWrite(path=str(path), current=current, value=value, reason=reason))
+    writes.append(
+        ProposedWrite(
+            path=str(path),
+            current=current,
+            value=value,
+            reason=reason,
+            valid_values=tuple(valid_values) if valid_values is not None else None,
+        )
+    )
 
 
 def propose_profile(
@@ -108,6 +117,7 @@ def propose_profile(
                             current=state["disable"],
                             value="1",
                             reason="Disable deepest idle state for latency mode",
+                            valid_values=("0", "1"),
                         )
                     )
 

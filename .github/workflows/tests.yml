@@ -1,0 +1,24 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile Python files
+        run: |
+          python - <<'PY'
+          import pathlib
+          import py_compile
+          for path in pathlib.Path("cpuoptctl").glob("*.py"):
+              py_compile.compile(str(path), doraise=True)
+          PY
+      - name: Run unit tests
+        run: python -m unittest

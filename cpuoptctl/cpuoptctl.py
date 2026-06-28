@@ -87,19 +87,34 @@ def _snapshot_existing(writes: list[ProposedWrite], state_dir: str) -> dict[str,
     return snapshot
 
 
+def _validate_write(item: ProposedWrite, current_value: str | None) -> str | None:
+    path = Path(item.path)
+    if not path.exists():
+        return "missing"
+    if not path.is_file():
+        return "not-a-file"
+    if current_value is None:
+        return "unreadable-current-value"
+    if item.valid_values is not None and item.value not in item.valid_values:
+        return "invalid-value"
+    return None
+
+
 def _apply_writes(writes: list[ProposedWrite], state_dir: str, dry_run: bool) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     for item in writes:
         path = Path(item.path)
+        current_value = read_text(path)
         result = {
             "path": item.path,
-            "current": item.current,
+            "current": current_value,
             "value": item.value,
             "reason": item.reason,
             "applied": False,
         }
-        if not path.exists():
-            result["error"] = "missing"
+        validation_error = _validate_write(item, current_value)
+        if validation_error is not None:
+            result["error"] = validation_error
         elif dry_run:
             result["dry_run"] = True
         else:
@@ -108,7 +123,8 @@ def _apply_writes(writes: list[ProposedWrite], state_dir: str, dry_run: bool) ->
                 result["applied"] = True
             except OSError as exc:
                 result["error"] = str(exc)
-        _log_write(state_dir, result)
+        if not dry_run:
+            _log_write(state_dir, result)
         results.append(result)
     return results
 
@@ -158,7 +174,8 @@ def cmd_profile(args: argparse.Namespace) -> int:
     print("Proposed writes:")
     for item in writes:
         print(f"- {item.path}: {item.current!r} -> {item.value!r} ({item.reason})")
-    _snapshot_existing(writes, args.state_dir)
+    if not args.dry_run:
+        _snapshot_existing(writes, args.state_dir)
     results = _apply_writes(writes, args.state_dir, args.dry_run)
     if args.dry_run:
         print("Dry-run only; no files were modified.")

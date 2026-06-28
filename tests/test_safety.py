@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from cpuoptctl.cpuopt_discovery import discover
 from cpuoptctl.cpuopt_profiles import propose_profile
-from cpuoptctl.cpuoptctl import cmd_profile
+from cpuoptctl.cpuoptctl import _apply_writes, _state_path, _write_log_path, cmd_profile
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -34,6 +35,8 @@ class SafetyTests(unittest.TestCase):
                 },
             )()
             cmd_profile(args)
+            self.assertFalse(_state_path(temp_dir).exists())
+            self.assertFalse(_write_log_path(temp_dir).exists())
         after = target.read_text(encoding="utf-8")
         self.assertEqual(before, after)
 
@@ -48,6 +51,18 @@ class SafetyTests(unittest.TestCase):
         proposal = propose_profile(data, "latency", sysfs_root=str(FIXTURES / "intel_hwp"))
         paths = [item.path for item in proposal["writes"]]
         self.assertFalse(any(path.endswith("/disable") for path in paths))
+
+    def test_apply_revalidates_allowed_values(self) -> None:
+        root = FIXTURES / "intel_hwp"
+        data = discover(sysfs_root=str(root))
+        proposal = propose_profile(data, "performance", sysfs_root=str(root))
+        epp_write = next(item for item in proposal["writes"] if item.path.endswith("energy_performance_preference"))
+        invalid_write = replace(epp_write, valid_values=("balance_power",))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            results = _apply_writes([invalid_write], temp_dir, dry_run=False)
+            self.assertEqual(results[0].get("error"), "invalid-value")
+            target = Path(invalid_write.path)
+            self.assertEqual(target.read_text(encoding="utf-8").strip(), "balance_performance")
 
 
 if __name__ == "__main__":

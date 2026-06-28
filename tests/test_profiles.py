@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -33,18 +34,20 @@ class ProfileTests(unittest.TestCase):
     def test_restore_snapshot_is_created(self) -> None:
         root = FIXTURES / "intel_hwp"
         with tempfile.TemporaryDirectory() as temp_dir:
+            sysfs_root = Path(temp_dir) / "sysfs"
+            shutil.copytree(root, sysfs_root)
             args = type(
                 "Args",
                 (),
                 {
-                    "sysfs_root": str(root),
+                    "sysfs_root": str(sysfs_root),
                     "state_dir": temp_dir,
                     "profile_name": "performance",
                     "allow_idle_tuning": False,
                     "allow_fan_control": False,
                     "experimental_fan_write": False,
                     "allow_turbo_disable": False,
-                    "dry_run": True,
+                    "dry_run": False,
                     "json": False,
                 },
             )()

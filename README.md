@@ -1,5 +1,10 @@
 # CPUOpt-Kernel
 
+[![tests](https://github.com/manishklach/cpuopt-kernel/actions/workflows/tests.yml/badge.svg)](https://github.com/manishklach/cpuopt-kernel/actions/workflows/tests.yml)
+[![license](https://img.shields.io/badge/license-GPL--2.0--only-blue.svg)](https://github.com/manishklach/cpuopt-kernel/blob/main/LICENSE)
+[![python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![version](https://img.shields.io/badge/version-v0.1.0-informational.svg)](https://github.com/manishklach/cpuopt-kernel/blob/main/CHANGELOG.md)
+
 CPUOpt-Kernel translates vendor CPU performance controls into safe Linux policy profiles.
 It prefers existing kernel interfaces over raw register writes and treats thermal and fan
 control as platform concerns, not as a shortcut for unsafe CPU tuning.
@@ -109,3 +114,9 @@ Warnings:
 - Optional kernel module under `/sys/kernel/cpuopt/`
 - Read-only MSR decoding with model-aware guardrails
 - Model-specific write allowlists only after documentation and fallback validation
+
+## Project metadata
+
+- License: `GPL-2.0-only`
+- Current target release: `v0.1.0`
+- CI: GitHub Actions runs Python compile checks and `unittest`
