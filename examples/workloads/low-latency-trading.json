@@ -1,0 +1,15 @@
+{
+  "name": "low-latency-trading",
+  "recommended_profile": "latency",
+  "rationale": [
+    "Prefer immediate CPU responsiveness",
+    "Keep turbo enabled where safe",
+    "Only tune deep idle states with explicit opt-in",
+    "Do not disable thermal protections"
+  ],
+  "future_knobs": [
+    "IRQ affinity",
+    "isolcpus guidance",
+    "scheduler latency telemetry"
+  ]
+}

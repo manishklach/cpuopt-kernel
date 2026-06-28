@@ -1,0 +1,15 @@
+{
+  "name": "llama-inference",
+  "recommended_profile": "ai-inference",
+  "rationale": [
+    "Prefer high sustained frequency",
+    "Keep turbo enabled",
+    "Avoid unnecessary low-power bias",
+    "Do not disable thermal protections"
+  ],
+  "future_knobs": [
+    "NUMA pinning",
+    "uncore frequency",
+    "memory bandwidth telemetry"
+  ]
+}

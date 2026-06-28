@@ -12,6 +12,10 @@
 ## Milestone 2
 
 - telemetry and benchmark comparison
+- doctor and explain surfaces
+- dry-run diff visualization
+- Intel HWP reporting and read-only MSR telemetry
+- workload presets and demo assets
 
 ## Milestone 3
 

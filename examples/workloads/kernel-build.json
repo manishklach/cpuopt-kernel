@@ -1,0 +1,15 @@
+{
+  "name": "kernel-build",
+  "recommended_profile": "performance",
+  "rationale": [
+    "Favor sustained CPU throughput",
+    "Keep turbo enabled where safe",
+    "Avoid low-power EPP bias during compilation",
+    "Do not disable thermal protections"
+  ],
+  "future_knobs": [
+    "build-task pinning",
+    "uncore frequency",
+    "package power telemetry"
+  ]
+}

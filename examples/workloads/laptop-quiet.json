@@ -1,0 +1,15 @@
+{
+  "name": "laptop-quiet",
+  "recommended_profile": "quiet",
+  "rationale": [
+    "Reduce CPU aggressiveness before any platform fan consideration",
+    "Favor power-oriented EPP values",
+    "Keep policy reversible",
+    "Do not disable thermal protections"
+  ],
+  "future_knobs": [
+    "battery telemetry",
+    "platform profile integration",
+    "display/thermal cross-correlation"
+  ]
+}

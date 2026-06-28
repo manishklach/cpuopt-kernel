@@ -2,16 +2,25 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
 try:
+    from .cpuopt_compare import compare_profiles, format_compare_report
     from .cpuopt_discovery import discover
+    from .cpuopt_doctor import build_doctor_report, format_doctor_report
+    from .cpuopt_explain import format_profile_explanation
+    from .cpuopt_msr import decode_intel_msrs, format_msr_report
     from .cpuopt_profiles import ProposedWrite, propose_profile
     from .cpuopt_telemetry import collect_sample, monitor
     from .cpuopt_utils import json_ready, now_utc, read_text, save_json, write_text
 except ImportError:
+    from cpuopt_compare import compare_profiles, format_compare_report
     from cpuopt_discovery import discover
+    from cpuopt_doctor import build_doctor_report, format_doctor_report
+    from cpuopt_explain import format_profile_explanation
+    from cpuopt_msr import decode_intel_msrs, format_msr_report
     from cpuopt_profiles import ProposedWrite, propose_profile
     from cpuopt_telemetry import collect_sample, monitor
     from cpuopt_utils import json_ready, now_utc, read_text, save_json, write_text
@@ -68,6 +77,16 @@ def _format_status(data: dict[str, Any]) -> str:
     for warning in data.get("warnings", []):
         lines.append(f"  {warning}")
     return "\n".join(lines)
+
+
+def _format_diff(writes: list[ProposedWrite]) -> str:
+    lines = ["Planned CPUOpt changes", "----------------------"]
+    for item in writes:
+        lines.append(item.path)
+        lines.append(f"  current: {item.current}")
+        lines.append(f"  new:     {item.value}")
+        lines.append("")
+    return "\n".join(lines).rstrip()
 
 
 def _log_write(state_dir: str, entry: dict[str, Any]) -> None:
@@ -171,9 +190,12 @@ def cmd_profile(args: argparse.Namespace) -> int:
     if not writes:
         print("No safe changes proposed.")
         return 0
-    print("Proposed writes:")
-    for item in writes:
-        print(f"- {item.path}: {item.current!r} -> {item.value!r} ({item.reason})")
+    if getattr(args, "diff", False):
+        print(_format_diff(writes))
+    else:
+        print("Proposed writes:")
+        for item in writes:
+            print(f"- {item.path}: {item.current!r} -> {item.value!r} ({item.reason})")
     if not args.dry_run:
         _snapshot_existing(writes, args.state_dir)
     results = _apply_writes(writes, args.state_dir, args.dry_run)
@@ -182,6 +204,70 @@ def cmd_profile(args: argparse.Namespace) -> int:
     else:
         applied = sum(1 for result in results if result.get("applied"))
         print(f"Applied {applied}/{len(results)} writes.")
+    return 0
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    _resolve_common_args(args)
+    data = discover(sysfs_root=args.sysfs_root)
+    findings = build_doctor_report(data, state_dir=args.state_dir, dev_root=args.dev_root)
+    print(json.dumps(findings, indent=2) if args.json else format_doctor_report(findings))
+    return 0
+
+
+def cmd_explain(args: argparse.Namespace) -> int:
+    print(format_profile_explanation(args.profile_name))
+    return 0
+
+
+def cmd_intel_hwp(args: argparse.Namespace) -> int:
+    _resolve_common_args(args)
+    data = discover(sysfs_root=args.sysfs_root)
+    policies = data.get("policies", [])
+    epp_values = []
+    current_epp = []
+    for policy in policies:
+        epp_values.extend(policy.get("energy_performance_available_preferences", []))
+        if policy.get("energy_performance_preference") is not None:
+            current_epp.append(f"{policy.get('name')}={policy.get('energy_performance_preference')}")
+    msr_report = decode_intel_msrs(dev_root=args.dev_root, safe=True if args.safe_msr else False)
+    lines = ["Intel HWP Report", "----------------", f"HWP exposed via sysfs: {'yes' if any(current_epp) else 'no'}"]
+    lines.append(f"EPP available: {' '.join(dict.fromkeys(epp_values)) if epp_values else 'none'}")
+    lines.append(f"Current EPP: {', '.join(current_epp) if current_epp else 'none'}")
+    lines.append(f"HWP MSR read available: {'yes' if msr_report.get('available') else 'no'}")
+    lines.append(f"Turbo control: {'available' if data.get('intel_pstate', {}).get('exists') or data.get('cpufreq_boost') is not None else 'unavailable'}")
+    lines.append(f"intel_pstate status: {data.get('intel_pstate', {}).get('status')}")
+    if msr_report.get("available"):
+        caps = msr_report.get("registers", {}).get("IA32_HWP_CAPABILITIES", {}).get("fields", {})
+        if caps:
+            lines.append("HWP capabilities:")
+            lines.append(f"  lowest performance: {caps.get('lowest_performance')}")
+            lines.append(f"  highest performance: {caps.get('highest_performance')}")
+            lines.append(f"  guaranteed performance: {caps.get('guaranteed_performance')}")
+            lines.append(f"  most efficient performance: {caps.get('most_efficient_performance')}")
+    print("\n".join(lines))
+    return 0
+
+
+def cmd_msr_read(args: argparse.Namespace) -> int:
+    if args.intel is not True:
+        print("Only --intel read-only telemetry is implemented in v0.2.")
+        return 1
+    report = decode_intel_msrs(dev_root=args.dev_root, safe=args.safe)
+    print(json.dumps(report, indent=2) if args.json else format_msr_report(report))
+    return 0
+
+
+def cmd_compare(args: argparse.Namespace) -> int:
+    _resolve_common_args(args)
+    result = compare_profiles(
+        profile_a=args.profile_a,
+        profile_b=args.profile_b,
+        benchmark=args.benchmark,
+        duration=args.duration,
+        sysfs_root=args.sysfs_root,
+    )
+    print(json.dumps(result, indent=2) if args.json else format_compare_report(result))
     return 0
 
 
@@ -254,6 +340,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_common_local_args(profile, include_state_dir=True)
     profile.add_argument("profile_name", choices=["performance", "balanced", "latency", "quiet", "ai-inference"])
     profile.add_argument("--dry-run", action="store_true")
+    profile.add_argument("--diff", action="store_true")
     profile.add_argument("--json", action="store_true")
     profile.add_argument("--allow-idle-tuning", action="store_true")
     profile.add_argument("--allow-fan-control", action="store_true")
@@ -272,6 +359,38 @@ def build_parser() -> argparse.ArgumentParser:
     restore = subparsers.add_parser("restore")
     _add_common_local_args(restore, include_state_dir=True)
     restore.set_defaults(func=cmd_restore)
+
+    doctor = subparsers.add_parser("doctor")
+    doctor.add_argument("--json", action="store_true")
+    doctor.add_argument("--dev-root", default="/dev")
+    _add_common_local_args(doctor, include_state_dir=True)
+    doctor.set_defaults(func=cmd_doctor)
+
+    explain = subparsers.add_parser("explain")
+    explain.add_argument("profile_name", choices=["performance", "balanced", "latency", "quiet", "ai-inference"])
+    explain.set_defaults(func=cmd_explain)
+
+    msr = subparsers.add_parser("msr-read")
+    msr.add_argument("--intel", action="store_true")
+    msr.add_argument("--safe", action="store_true")
+    msr.add_argument("--json", action="store_true")
+    msr.add_argument("--dev-root", default="/dev")
+    msr.set_defaults(func=cmd_msr_read)
+
+    hwp = subparsers.add_parser("intel-hwp")
+    hwp.add_argument("--safe-msr", action="store_true")
+    hwp.add_argument("--dev-root", default="/dev")
+    _add_common_local_args(hwp)
+    hwp.set_defaults(func=cmd_intel_hwp)
+
+    compare = subparsers.add_parser("compare")
+    compare.add_argument("profile_a", choices=["performance", "balanced", "latency", "quiet", "ai-inference"])
+    compare.add_argument("profile_b", choices=["performance", "balanced", "latency", "quiet", "ai-inference"])
+    compare.add_argument("--benchmark", default="stress-ng")
+    compare.add_argument("--duration", type=int, default=30)
+    compare.add_argument("--json", action="store_true")
+    _add_common_local_args(compare)
+    compare.set_defaults(func=cmd_compare)
     return parser
 
 

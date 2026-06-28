@@ -1,0 +1,9 @@
+timestamp=2026-06-28T13:00:00+00:00
+avg_current_freq=1800000
+min_current_freq=1800000
+max_current_freq=1800000
+package_temp=51000
+hottest_zone=x86_pkg_temp
+turbo_status=1
+boost_status=1
+policy=policy0 governor=powersave epp=balance_performance current_freq=1800000

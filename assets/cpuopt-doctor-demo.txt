@@ -1,0 +1,13 @@
+CPUOpt Doctor
+-------------
+[OK] intel_pstate active
+[OK] EPP exposed
+[WARN] turbo disabled
+[OK] performance governor available
+[INFO] 1 thermal zones detected
+[INFO] hwmon fan sensors detected, write disabled by policy
+[WARN] deepest C-state has high exit latency; latency profile may benefit from --allow-idle-tuning
+[INFO] no restore snapshot available
+[WARN] not running as root; write operations may fail
+[INFO] MSR device not available for read-only telemetry
+[INFO] no uncore frequency interface detected

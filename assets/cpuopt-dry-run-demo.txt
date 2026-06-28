@@ -1,0 +1,13 @@
+Planned CPUOpt changes
+----------------------
+/sys/devices/system/cpu/cpufreq/policy0/scaling_governor
+  current: powersave
+  new:     performance
+
+/sys/devices/system/cpu/cpufreq/policy0/energy_performance_preference
+  current: balance_performance
+  new:     performance
+
+/sys/devices/system/cpu/intel_pstate/no_turbo
+  current: 1
+  new:     0

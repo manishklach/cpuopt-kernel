@@ -1,0 +1,15 @@
+{
+  "name": "server-throughput",
+  "recommended_profile": "balanced",
+  "rationale": [
+    "Balance sustained throughput and thermals",
+    "Prefer schedutil or equivalent scaling paths",
+    "Keep turbo enabled when safe",
+    "Do not disable thermal protections"
+  ],
+  "future_knobs": [
+    "package power caps",
+    "rack-level thermal awareness",
+    "uncore telemetry"
+  ]
+}

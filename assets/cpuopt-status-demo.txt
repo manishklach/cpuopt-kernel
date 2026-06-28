@@ -1,0 +1,14 @@
+## CPUOpt Status
+
+Vendor: GenuineIntel
+Model: Intel(R) Core(TM) i7-1280P
+Kernel: 6.8.0-test
+Scaling driver: intel_pstate
+HWP/EPP exposed: yes
+Turbo control: intel_pstate/no_turbo
+Policies:
+  policy0 CPUs=0-7 governor=powersave min=400000 max=4700000 epp=balance_performance
+Thermals:
+  x86_pkg_temp temp=51000
+Warnings:
+  Fan control is platform-specific; not directly controlled unless safely exposed.
