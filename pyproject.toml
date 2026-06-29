@@ -1,19 +1,84 @@
 [project]
-name = "cpuopt-kernel"
+name = "cpuoptctl"
 version = "0.2.0"
-description = "Safety-first Linux CPU performance policy tool"
+description = "Safe, workload-aware CPU performance profiles for Linux"
+readme = "README.md"
 license = { text = "GPL-2.0-only" }
 requires-python = ">=3.10"
+keywords = [
+    "linux",
+    "cpu",
+    "performance",
+    "cpufreq",
+    "intel-pstate",
+    "amd-pstate",
+    "power-management",
+    "sysfs",
+    "thermal",
+    "latency",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+]
+dependencies = []
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.0",
+]
+dev = [
+    "ruff>=0.4",
+    "mypy>=1.9",
+    "pre-commit>=3.7",
+]
+
+[project.scripts]
+cpuoptctl = "cpuoptctl.cpuoptctl:main"
+
+[project.urls]
+Homepage = "https://github.com/manishklach/cpuopt-kernel"
+Repository = "https://github.com/manishklach/cpuopt-kernel"
+Issues = "https://github.com/manishklach/cpuopt-kernel/issues"
+Changelog = "https://github.com/manishklach/cpuopt-kernel/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/manishklach/cpuopt-kernel/blob/main/docs/ARCHITECTURE.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.ruff]
 target-version = "py310"
-line-length = 127
+line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "C4"]
+ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.10"
 strict = true
 ignore_missing_imports = true
-disallow_untyped_defs = false
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=cpuoptctl --cov-report=term-missing --cov-fail-under=65"
+
+[tool.coverage.run]
+source = ["cpuoptctl"]
+omit = ["tests/*"]
