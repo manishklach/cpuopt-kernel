@@ -166,7 +166,7 @@ def cmd_intel_hwp(args: argparse.Namespace) -> int:
         epp_values.extend(policy.get("energy_performance_available_preferences", []))
         if policy.get("energy_performance_preference") is not None:
             current_epp.append(f"{policy.get('name')}={policy.get('energy_performance_preference')}")
-    msr_report = decode_intel_msrs(dev_root=args.dev_root, safe=True if args.safe_msr else False)
+    msr_report = decode_intel_msrs(dev_root=args.dev_root, safe=bool(args.safe_msr))
     lines = [
         "Intel HWP Report",
         "----------------",

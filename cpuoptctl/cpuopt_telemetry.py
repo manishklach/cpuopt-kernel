@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Generator
+from collections.abc import Generator
+from typing import Any
 
 try:
     from .cpuopt_discovery import discover
