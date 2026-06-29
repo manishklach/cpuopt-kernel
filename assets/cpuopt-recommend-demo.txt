@@ -1,0 +1,21 @@
+CPUOpt Recommendation
+---------------------
+Recommended profile: ai-inference
+Confidence: high
+Workload: llama-inference
+
+Reasons:
+- Intel platform with EPP exposure allows profile-aligned policy recommendations.
+- AI inference workload maps directly to the ai-inference profile.
+- Observed package temperature is about 51 C, suggesting current thermal headroom is acceptable.
+
+Warnings:
+- Turbo or boost is currently disabled; recommended profile may underperform until it is re-enabled.
+- Laptop-like thermal and fan characteristics detected; quiet or balanced may be safer for sustained use.
+- Aggressive profiles on laptop-like systems may reduce thermal headroom.
+
+Suggested dry-run command: python cpuoptctl/cpuoptctl.py profile ai-inference --dry-run --diff
+Suggested restore command: python cpuoptctl/cpuoptctl.py restore
+
+Unsupported features:
+- none

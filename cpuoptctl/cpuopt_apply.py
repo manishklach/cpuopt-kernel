@@ -4,8 +4,12 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .cpuopt_profiles import ProposedWrite
-from .cpuopt_utils import now_utc, read_text, save_json, write_text
+try:
+    from .cpuopt_profiles import ProposedWrite
+    from .cpuopt_utils import now_utc, read_text, save_json, write_text
+except ImportError:
+    from cpuopt_profiles import ProposedWrite
+    from cpuopt_utils import now_utc, read_text, save_json, write_text
 
 
 def state_path(state_dir: str) -> Path:

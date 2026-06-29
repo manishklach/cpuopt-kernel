@@ -13,6 +13,7 @@ try:
     from .cpuopt_explain import format_profile_explanation
     from .cpuopt_msr import decode_intel_msrs, format_msr_report
     from .cpuopt_profiles import ProposedWrite, propose_profile
+    from .cpuopt_recommend import format_recommendation, recommend_profile
     from .cpuopt_telemetry import collect_sample, monitor
     from .cpuopt_utils import json_ready, now_utc, read_text, save_json
 except ImportError:
@@ -23,6 +24,7 @@ except ImportError:
     from cpuopt_explain import format_profile_explanation
     from cpuopt_msr import decode_intel_msrs, format_msr_report
     from cpuopt_profiles import ProposedWrite, propose_profile
+    from cpuopt_recommend import format_recommendation, recommend_profile
     from cpuopt_telemetry import collect_sample, monitor
     from cpuopt_utils import json_ready, now_utc, read_text, save_json
 
@@ -205,6 +207,14 @@ def cmd_compare(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_recommend(args: argparse.Namespace) -> int:
+    _resolve_common_args(args)
+    data = discover(sysfs_root=args.sysfs_root)
+    report = recommend_profile(data, workload=args.workload, workload_dir=args.workload_dir)
+    print(json.dumps(report, indent=2) if args.json else format_recommendation(report))
+    return 0
+
+
 def cmd_restore(args: argparse.Namespace) -> int:
     _resolve_common_args(args)
     sp = state_path(args.state_dir)
@@ -326,6 +336,13 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("--json", action="store_true")
     _add_common_local_args(compare)
     compare.set_defaults(func=cmd_compare)
+
+    recommend = subparsers.add_parser("recommend")
+    recommend.add_argument("--workload")
+    recommend.add_argument("--workload-dir")
+    recommend.add_argument("--json", action="store_true")
+    _add_common_local_args(recommend)
+    recommend.set_defaults(func=cmd_recommend)
     return parser
 
 

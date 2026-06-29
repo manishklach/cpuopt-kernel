@@ -13,6 +13,7 @@
 
 - telemetry and benchmark comparison
 - doctor and explain surfaces
+- recommendation engine and workload-aware advisory output
 - dry-run diff visualization
 - Intel HWP reporting and read-only MSR telemetry
 - workload presets and demo assets

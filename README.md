@@ -24,6 +24,7 @@ Version `v0.2` remains intentionally conservative:
 - Reversible sysfs writes with snapshot/restore
 - Dry-run support for every profile application
 - `doctor`, `explain`, `intel-hwp`, and compare/telemetry-oriented depth commands
+- `recommend` advisory engine for workload-aware profile suggestions
 - Read-only Intel MSR telemetry decoder with no write path
 
 ## Why this exists
@@ -46,6 +47,7 @@ The first release focuses on safe Intel profile application through sysfs:
 - `profile` maps high-level policies to existing sysfs knobs
 - `doctor` highlights problems, opportunities, and safety constraints before tuning
 - `explain` documents profile intent, tradeoffs, and safety limits
+- `recommend` suggests a profile, confidence level, warnings, and dry-run next steps without applying changes
 - `intel-hwp` reports Intel HWP/EPP exposure and optional read-only telemetry availability
 - `msr-read --intel --safe` decodes a small read-only allowlist of Intel MSRs
 - `compare` provides a safe benchmark/comparison scaffold without automatic package install
@@ -78,6 +80,10 @@ sudo python3 cpuoptctl/cpuoptctl.py profile latency --allow-idle-tuning
 sudo python3 cpuoptctl/cpuoptctl.py profile quiet
 sudo python3 cpuoptctl/cpuoptctl.py profile ai-inference
 python3 cpuoptctl/cpuoptctl.py doctor
+python3 cpuoptctl/cpuoptctl.py recommend
+python3 cpuoptctl/cpuoptctl.py recommend --workload kernel-build
+python3 cpuoptctl/cpuoptctl.py recommend --workload llama-inference
+python3 cpuoptctl/cpuoptctl.py recommend --workload low-latency
 python3 cpuoptctl/cpuoptctl.py explain performance
 python3 cpuoptctl/cpuoptctl.py intel-hwp
 sudo python3 cpuoptctl/cpuoptctl.py msr-read --intel --safe
@@ -113,6 +119,7 @@ See [docs/SAFETY.md](docs/SAFETY.md) for the full model.
 
 ```bash
 cpuoptctl doctor
+cpuoptctl recommend --workload llama-inference
 cpuoptctl profile performance --dry-run --diff
 cpuoptctl monitor
 ```
@@ -123,6 +130,7 @@ Demo assets:
 - [assets/cpuopt-doctor-demo.txt](C:\Users\ManishKL\Documents\Playground\cpuopt-kernel\assets\cpuopt-doctor-demo.txt)
 - [assets/cpuopt-dry-run-demo.txt](C:\Users\ManishKL\Documents\Playground\cpuopt-kernel\assets\cpuopt-dry-run-demo.txt)
 - [assets/cpuopt-monitor-demo.txt](C:\Users\ManishKL\Documents\Playground\cpuopt-kernel\assets\cpuopt-monitor-demo.txt)
+- [assets/cpuopt-recommend-demo.txt](C:\Users\ManishKL\Documents\Playground\cpuopt-kernel\assets\cpuopt-recommend-demo.txt)
 
 ## Example status output
 
