@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## v0.2.0
+
+- repositioned CPUOpt-Kernel as a safety-first CPU performance policy layer rather than an
+  overclocking tool, with updated GitHub description, topics, and README guidance
+- expanded packaging metadata for a cleaner install path with `pyproject.toml`-based
+  project metadata, console entry point configuration, optional test and dev extras, and
+  richer project URLs and classifiers
+- added `docs/ARCHITECTURE.md` to document the discovery-to-profile pipeline, sysfs-root
+  abstraction, and future backend/plugin direction
+- introduced `cpuoptctl doctor` for structured platform health checks across CPUFreq,
+  `intel_pstate`, `amd-pstate`, cpuidle, thermal zones, hwmon, and policy safety signals
+- introduced `cpuoptctl explain` to describe profile intent and expected policy behavior
+  without applying changes
+- introduced `cpuoptctl compare` as an early benchmark-oriented comparison surface for
+  evaluating profile tradeoffs
+- added safe, read-only MSR telemetry commands including `cpuoptctl msr-read --intel
+  --safe` and `cpuoptctl intel-hwp`
+- added the v0.3 recommendation engine behind `cpuoptctl recommend`, including workload
+  presets such as `kernel-build`, `low-latency`, and `llama-inference`
+- recommendation output now reports recommended profile, confidence, reasons, warnings,
+  suggested dry-run and restore commands, and unsupported features without writing to the
+  system
+- expanded fake sysfs fixtures and unit coverage for advisory logic, dry-run guarantees,
+  apply validation, and Intel recommendation paths
+- refreshed demo assets and example flows to showcase doctor, recommend, dry-run diff, and
+  monitor-driven workflows
+- fixed GitHub Actions workflow failures by cleaning up lint issues and simplifying the CI
+  gate to the checks that currently reflect the maintained code path
+
 ## v0.1.0
 
 - initial public release of CPUOpt-Kernel
