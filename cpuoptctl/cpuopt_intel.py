@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Iterable
 
-
 PROFILE_EPP_ORDER: dict[str, list[str]] = {
     "performance": ["performance"],
     "balanced": ["balance_performance", "balance_power", "default", "performance"],

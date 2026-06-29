@@ -167,11 +167,21 @@ def cmd_intel_hwp(args: argparse.Namespace) -> int:
         if policy.get("energy_performance_preference") is not None:
             current_epp.append(f"{policy.get('name')}={policy.get('energy_performance_preference')}")
     msr_report = decode_intel_msrs(dev_root=args.dev_root, safe=True if args.safe_msr else False)
-    lines = ["Intel HWP Report", "----------------", f"HWP exposed via sysfs: {'yes' if any(current_epp) else 'no'}"]
+    lines = [
+        "Intel HWP Report",
+        "----------------",
+        f"HWP exposed via sysfs: {'yes' if any(current_epp) else 'no'}",
+    ]
     lines.append(f"EPP available: {' '.join(dict.fromkeys(epp_values)) if epp_values else 'none'}")
     lines.append(f"Current EPP: {', '.join(current_epp) if current_epp else 'none'}")
     lines.append(f"HWP MSR read available: {'yes' if msr_report.get('available') else 'no'}")
-    lines.append(f"Turbo control: {'available' if data.get('intel_pstate', {}).get('exists') or data.get('cpufreq_boost') is not None else 'unavailable'}")
+    turbo_available = (
+        data.get("intel_pstate", {}).get("exists")
+        or data.get("cpufreq_boost") is not None
+    )
+    lines.append(
+        f"Turbo control: {'available' if turbo_available else 'unavailable'}"
+    )
     lines.append(f"intel_pstate status: {data.get('intel_pstate', {}).get('status')}")
     if msr_report.get("available"):
         caps = msr_report.get("registers", {}).get("IA32_HWP_CAPABILITIES", {}).get("fields", {})

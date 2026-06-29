@@ -29,7 +29,14 @@ def build_doctor_report(
 
     has_perf_governor = any("performance" in policy.get("available_governors", []) for policy in policies)
     findings.append(
-        ("OK" if has_perf_governor else "WARN", "performance governor available" if has_perf_governor else "performance governor unavailable")
+        (
+            "OK" if has_perf_governor else "WARN",
+            (
+                "performance governor available"
+                if has_perf_governor
+                else "performance governor unavailable"
+            ),
+        )
     )
 
     zone_count = len(discovery.get("thermal", {}).get("thermal_zones", []))
@@ -59,14 +66,39 @@ def build_doctor_report(
         findings.append(("INFO", "no cpuidle states detected"))
 
     findings.append(
-        ("INFO", "restore snapshot available" if (Path(state_dir) / "last_state.json").exists() else "no restore snapshot available")
+        (
+            "INFO",
+            (
+                "restore snapshot available"
+                if (Path(state_dir) / "last_state.json").exists()
+                else "no restore snapshot available"
+            ),
+        )
     )
 
     root_state = is_root if is_root is not None else (_safe_is_root())
-    findings.append(("OK" if root_state else "WARN", "running with root privileges" if root_state else "not running as root; write operations may fail"))
+    findings.append(
+        (
+            "OK" if root_state else "WARN",
+            (
+                "running with root privileges"
+                if root_state
+                else "not running as root; write operations may fail"
+            ),
+        )
+    )
 
     msr_path = Path(dev_root) / "cpu" / "0" / "msr"
-    findings.append(("INFO", "MSR device available for read-only telemetry" if msr_path.exists() else "MSR device not available for read-only telemetry"))
+    findings.append(
+        (
+            "INFO",
+            (
+                "MSR device available for read-only telemetry"
+                if msr_path.exists()
+                else "MSR device not available for read-only telemetry"
+            ),
+        )
+    )
 
     findings.append(("INFO", "no uncore frequency interface detected"))
     return findings

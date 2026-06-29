@@ -5,7 +5,6 @@ from pathlib import Path
 
 from cpuoptctl.cpuopt_discovery import discover
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 
 

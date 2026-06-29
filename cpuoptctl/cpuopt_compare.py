@@ -104,8 +104,16 @@ def format_compare_report(result: dict[str, Any]) -> str:
         f"Duration: {result['duration']}s",
         "",
         f"{'Metric':<24}{profile_a:<14}{profile_b:<14}",
-        f"{'Avg frequency':<24}{_fmt_freq(sample_a.get('avg_current_freq')):<14}{_fmt_freq(sample_b.get('avg_current_freq')):<14}",
-        f"{'Max temperature':<24}{_fmt_temp(sample_a.get('package_temp')):<14}{_fmt_temp(sample_b.get('package_temp')):<14}",
+        (
+            f"{'Avg frequency':<24}"
+            f"{_fmt_freq(sample_a.get('avg_current_freq')):<14}"
+            f"{_fmt_freq(sample_b.get('avg_current_freq')):<14}"
+        ),
+        (
+            f"{'Max temperature':<24}"
+            f"{_fmt_temp(sample_a.get('package_temp')):<14}"
+            f"{_fmt_temp(sample_b.get('package_temp')):<14}"
+        ),
         f"{'Thermal throttling':<24}{'unknown':<14}{'unknown':<14}",
     ]
 

@@ -17,9 +17,17 @@ def recommend_profile(
     policies = discovery.get("policies", [])
     has_thermal = bool(discovery.get("thermal", {}).get("thermal_zones"))
     has_epp = any(policy.get("energy_performance_preference") for policy in policies)
-    current_epp = [policy.get("energy_performance_preference") for policy in policies if policy.get("energy_performance_preference")]
+    current_epp = [
+        policy.get("energy_performance_preference")
+        for policy in policies
+        if policy.get("energy_performance_preference")
+    ]
     turbo_disabled = discovery.get("intel_pstate", {}).get("no_turbo") == "1" or discovery.get("cpufreq_boost") == "0"
-    deepest_latency = max((state.get("latency") or 0) for state in discovery.get("cpuidle_states", [])) if discovery.get("cpuidle_states") else None
+    deepest_latency = (
+        max((state.get("latency") or 0) for state in discovery.get("cpuidle_states", []))
+        if discovery.get("cpuidle_states")
+        else None
+    )
     package_temp = _package_temp(discovery)
     laptop_like = _is_laptop_like(discovery)
 
@@ -60,31 +68,48 @@ def recommend_profile(
         preset_profile = preset.get("recommended_profile")
         if preset_profile in {"performance", "balanced", "latency", "quiet", "ai-inference"}:
             profile = preset_profile
-            reasons.append(f"Workload preset '{preset.get('name')}' recommends the {preset_profile} profile.")
+            reasons.append(
+                f"Workload preset '{preset.get('name')}' recommends the {preset_profile} profile."
+            )
 
     if laptop_like:
-        warnings.append("Laptop-like thermal and fan characteristics detected; quiet or balanced may be safer for sustained use.")
+        warnings.append(
+            "Laptop-like thermal and fan characteristics detected; quiet or balanced may be safer for sustained use."
+        )
         if profile in {"performance", "latency", "ai-inference"}:
-            warnings.append("Aggressive profiles on laptop-like systems may reduce thermal headroom.")
+            warnings.append(
+                "Aggressive profiles on laptop-like systems may reduce thermal headroom."
+            )
 
     if turbo_disabled and profile in {"performance", "latency", "ai-inference"}:
-        warnings.append("Turbo or boost is currently disabled; recommended profile may underperform until it is re-enabled.")
+        warnings.append(
+            "Turbo or boost is currently disabled; recommended profile may underperform until it is re-enabled."
+        )
 
     if deepest_latency is not None and deepest_latency >= 100 and profile == "latency":
-        reasons.append("Deepest C-state latency is high enough that optional idle tuning may help latency-sensitive workloads.")
+        reasons.append(
+            "Deepest C-state latency is high enough that optional idle tuning may help latency-sensitive workloads."
+        )
 
     if package_temp is not None and package_temp >= 80000:
         confidence = _lower_confidence(confidence)
         warnings.append("Thermal headroom appears limited; sustained high-performance profiles may not hold.")
     elif package_temp is not None:
-        reasons.append(f"Observed package temperature is about {package_temp / 1000:.0f} C, suggesting current thermal headroom is acceptable.")
+        reasons.append(
+            f"Observed package temperature is about {package_temp / 1000:.0f} C, "
+            "suggesting current thermal headroom is acceptable."
+        )
 
     optimal_epp = _optimal_epp_for_profile(profile)
     if has_epp and current_epp and all(value == optimal_epp for value in current_epp if optimal_epp is not None):
-        reasons.append("Current EPP already matches the recommended profile intent; no changes may be needed.")
+        reasons.append(
+            "Current EPP already matches the recommended profile intent; no changes may be needed."
+        )
 
     if normalized is None:
-        reasons.append("No workload preset was specified; recommendation is based on current platform capabilities and safety posture.")
+        reasons.append(
+            "No workload preset was specified; recommendation is based on current platform capabilities and safety posture."
+        )
 
     return {
         "recommended_profile": profile,
@@ -136,7 +161,6 @@ def _normalize_workload(workload: str | None) -> str | None:
         "llama-inference": "llama-inference",
         "ai-inference": "ai-inference",
         "kernel-build": "kernel-build",
-        "low-latency": "latency",
     }
     return aliases.get(value, value)
 

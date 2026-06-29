@@ -1,9 +1,6 @@
-from __future__ import annotations
-
 import os
 from pathlib import Path
 from typing import Any
-
 
 INTEL_SAFE_MSRS: dict[str, int] = {
     "IA32_ENERGY_PERF_BIAS": 0x1B0,
@@ -29,10 +26,16 @@ def decode_intel_msrs(
     is_root: bool | None = None,
 ) -> dict[str, Any]:
     if not safe:
-        return {"available": False, "reason": "--safe is required for read-only MSR telemetry"}
+        return {
+            "available": False,
+            "reason": "--safe is required for read-only MSR telemetry",
+        }
     root_state = is_root if is_root is not None else safe_root_check()
     if not root_state:
-        return {"available": False, "reason": "root privileges are required for read-only MSR telemetry"}
+        return {
+            "available": False,
+            "reason": "root privileges are required for read-only MSR telemetry",
+        }
 
     msr_path = Path(dev_root) / "cpu" / str(cpu) / "msr"
     if not msr_path.exists():
@@ -48,18 +51,32 @@ def decode_intel_msrs(
                     decoded[name] = {"error": "short-read"}
                     continue
                 value = int.from_bytes(raw, byteorder="little", signed=False)
-                decoded[name] = {"offset": hex(offset), "value": hex(value), "fields": _decode_fields(name, value)}
+                decoded[name] = {
+                    "offset": hex(offset),
+                    "value": hex(value),
+                    "fields": _decode_fields(name, value),
+                }
         finally:
             os.close(fd)
     except OSError as exc:
         return {"available": False, "reason": str(exc)}
-    return {"available": True, "cpu": cpu, "msr_path": str(msr_path), "registers": decoded, "read_only": True}
+    return {
+        "available": True,
+        "cpu": cpu,
+        "msr_path": str(msr_path),
+        "registers": decoded,
+        "read_only": True,
+    }
 
 
 def format_msr_report(report: dict[str, Any]) -> str:
     if not report.get("available"):
         return f"Intel MSR telemetry unavailable: {report.get('reason')}"
-    lines = ["Intel MSR Telemetry", "-------------------", "Read-only Intel MSR telemetry decoder. No writes. No tuning."]
+    lines = [
+        "Intel MSR Telemetry",
+        "-------------------",
+        "Read-only Intel MSR telemetry decoder. No writes. No tuning.",
+    ]
     lines.append(f"CPU: {report.get('cpu')}")
     lines.append(f"MSR path: {report.get('msr_path')}")
     for name, payload in report.get("registers", {}).items():
@@ -74,9 +91,15 @@ def _decode_fields(name: str, value: int) -> dict[str, int]:
     if name == "IA32_ENERGY_PERF_BIAS":
         return {"bias": value & 0xF}
     if name == "IA32_PACKAGE_THERM_STATUS":
-        return {"thermal_status": value & 0x1, "digital_readout": (value >> 16) & 0x7F}
+        return {
+            "thermal_status": value & 0x1,
+            "digital_readout": (value >> 16) & 0x7F,
+        }
     if name == "IA32_THERM_STATUS":
-        return {"thermal_status": value & 0x1, "digital_readout": (value >> 16) & 0x7F}
+        return {
+            "thermal_status": value & 0x1,
+            "digital_readout": (value >> 16) & 0x7F,
+        }
     if name == "IA32_HWP_CAPABILITIES":
         return {
             "highest_performance": value & 0xFF,
@@ -92,5 +115,8 @@ def _decode_fields(name: str, value: int) -> dict[str, int]:
             "energy_performance_preference": (value >> 24) & 0xFF,
         }
     if name == "IA32_HWP_STATUS":
-        return {"change_to_guaranteed": value & 0x1, "excursion_to_minimum": (value >> 2) & 0x1}
+        return {
+            "change_to_guaranteed": value & 0x1,
+            "excursion_to_minimum": (value >> 2) & 0x1,
+        }
     return {}

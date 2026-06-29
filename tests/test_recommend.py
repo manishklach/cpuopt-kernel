@@ -9,7 +9,6 @@ from cpuoptctl.cpuopt_discovery import discover
 from cpuoptctl.cpuopt_recommend import recommend_profile
 from cpuoptctl.cpuoptctl import cmd_recommend
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 WORKLOADS = Path(__file__).resolve().parents[1] / "examples" / "workloads"
 

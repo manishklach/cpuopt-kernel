@@ -12,14 +12,18 @@ from cpuoptctl.cpuopt_msr import decode_intel_msrs
 from cpuoptctl.cpuopt_profiles import propose_profile
 from cpuoptctl.cpuoptctl import _format_diff, cmd_compare, cmd_intel_hwp
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
 class DepthFeatureTests(unittest.TestCase):
     def test_doctor_finds_intel_signals(self) -> None:
         data = discover(sysfs_root=str(FIXTURES / "intel_hwp"))
-        findings = build_doctor_report(data, state_dir=str(FIXTURES / "missing-state"), dev_root=str(FIXTURES / "missing-dev"), is_root=False)
+        findings = build_doctor_report(
+            data,
+            state_dir=str(FIXTURES / "missing-state"),
+            dev_root=str(FIXTURES / "missing-dev"),
+            is_root=False,
+        )
         rendered = format_doctor_report(findings)
         self.assertIn("[OK] intel_pstate active", rendered)
         self.assertIn("[WARN] turbo disabled", rendered)

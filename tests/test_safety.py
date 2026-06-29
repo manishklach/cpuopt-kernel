@@ -13,7 +13,6 @@ from cpuoptctl.cpuopt_discovery import discover
 from cpuoptctl.cpuopt_profiles import propose_profile
 from cpuoptctl.cpuoptctl import cmd_profile, cmd_restore
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 
 

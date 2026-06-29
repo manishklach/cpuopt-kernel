@@ -1,7 +1,4 @@
-from __future__ import annotations
-
 from typing import Any
-
 
 PROFILE_EXPLANATIONS: dict[str, dict[str, Any]] = {
     "performance": {
@@ -13,9 +10,25 @@ PROFILE_EXPLANATIONS: dict[str, dict[str, Any]] = {
             "Do not disable thermal protection",
             "Do not write raw MSRs",
         ],
-        "tradeoffs": ["Higher power draw", "Higher temperature", "Higher fan activity", "Lower battery life"],
-        "limits": ["No raw MSR writes", "No fan writes", "No thermal bypass", "No overclocking or voltage control"],
-        "knobs": ["energy_performance_preference", "scaling_governor", "energy_perf_bias", "intel_pstate/no_turbo", "cpufreq/boost"],
+        "tradeoffs": [
+            "Higher power draw",
+            "Higher temperature",
+            "Higher fan activity",
+            "Lower battery life",
+        ],
+        "limits": [
+            "No raw MSR writes",
+            "No fan writes",
+            "No thermal bypass",
+            "No overclocking or voltage control",
+        ],
+        "knobs": [
+            "energy_performance_preference",
+            "scaling_governor",
+            "energy_perf_bias",
+            "intel_pstate/no_turbo",
+            "cpufreq/boost",
+        ],
     },
     "balanced": {
         "intent": "Balance responsiveness and efficiency for general workloads.",
@@ -24,9 +37,19 @@ PROFILE_EXPLANATIONS: dict[str, dict[str, Any]] = {
             "Prefer schedutil or powersave governors depending on availability",
             "Keep turbo enabled when safe",
         ],
-        "tradeoffs": ["Moderate power usage", "Moderate temperature", "Less peak responsiveness than performance mode"],
+        "tradeoffs": [
+            "Moderate power usage",
+            "Moderate temperature",
+            "Less peak responsiveness than performance mode",
+        ],
         "limits": ["No raw MSR writes", "No fan writes", "No thermal bypass"],
-        "knobs": ["energy_performance_preference", "scaling_governor", "energy_perf_bias", "intel_pstate/no_turbo", "cpufreq/boost"],
+        "knobs": [
+            "energy_performance_preference",
+            "scaling_governor",
+            "energy_perf_bias",
+            "intel_pstate/no_turbo",
+            "cpufreq/boost",
+        ],
     },
     "latency": {
         "intent": "Reduce response latency for bursty or latency-sensitive workloads.",
@@ -37,8 +60,19 @@ PROFILE_EXPLANATIONS: dict[str, dict[str, Any]] = {
             "Keep turbo enabled where safe",
         ],
         "tradeoffs": ["Higher power draw", "Higher temperature", "Less idle efficiency"],
-        "limits": ["No raw MSR writes", "No fan writes", "No thermal bypass", "No blanket C-state disable by default"],
-        "knobs": ["energy_performance_preference", "scaling_governor", "energy_perf_bias", "intel_pstate/no_turbo", "cpuidle/state*/disable"],
+        "limits": [
+            "No raw MSR writes",
+            "No fan writes",
+            "No thermal bypass",
+            "No blanket C-state disable by default",
+        ],
+        "knobs": [
+            "energy_performance_preference",
+            "scaling_governor",
+            "energy_perf_bias",
+            "intel_pstate/no_turbo",
+            "cpuidle/state*/disable",
+        ],
     },
     "quiet": {
         "intent": "Reduce CPU aggressiveness before considering any platform-specific fan action.",
@@ -47,8 +81,17 @@ PROFILE_EXPLANATIONS: dict[str, dict[str, Any]] = {
             "Prefer powersave or schedutil governors",
             "Do not change fan speeds in v0.2",
         ],
-        "tradeoffs": ["Lower peak performance", "Potentially slower burst response", "Better acoustic behavior on supported platforms"],
-        "limits": ["No fan writes", "No raw MSR writes", "No turbo disable unless explicitly requested", "No thermal bypass"],
+        "tradeoffs": [
+            "Lower peak performance",
+            "Potentially slower burst response",
+            "Better acoustic behavior on supported platforms",
+        ],
+        "limits": [
+            "No fan writes",
+            "No raw MSR writes",
+            "No turbo disable unless explicitly requested",
+            "No thermal bypass",
+        ],
         "knobs": ["energy_performance_preference", "scaling_governor", "energy_perf_bias"],
     },
     "ai-inference": {
@@ -59,9 +102,24 @@ PROFILE_EXPLANATIONS: dict[str, dict[str, Any]] = {
             "Keep turbo enabled where safe",
             "Report NUMA and uncore-related context without risky writes",
         ],
-        "tradeoffs": ["Higher package power", "Higher sustained temperature", "Potentially higher fan activity"],
-        "limits": ["No raw MSR writes", "No uncore writes in v0.2", "No fan writes", "No thermal bypass"],
-        "knobs": ["energy_performance_preference", "scaling_governor", "energy_perf_bias", "intel_pstate/no_turbo", "cpufreq/boost"],
+        "tradeoffs": [
+            "Higher package power",
+            "Higher sustained temperature",
+            "Potentially higher fan activity",
+        ],
+        "limits": [
+            "No raw MSR writes",
+            "No uncore writes in v0.2",
+            "No fan writes",
+            "No thermal bypass",
+        ],
+        "knobs": [
+            "energy_performance_preference",
+            "scaling_governor",
+            "energy_perf_bias",
+            "intel_pstate/no_turbo",
+            "cpufreq/boost",
+        ],
     },
 }
 
