@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPUOpt-Kernel: The Linux CPU Tool That Actually Thinks — Deep Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Sora:wght@300;400;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0c0e10;
+    --surface:   #13161a;
+    --card:      #1a1e24;
+    --border:    #252a32;
+    --muted:     #3a4150;
+    --text-dim:  #6b7585;
+    --text-mid:  #9aa3b0;
+    --text:      #dde3ec;
+    --text-hi:   #f0f4fa;
+    --accent:    #4af0a0;
+    --accent2:   #00c6ff;
+    --warn:      #f59e0b;
+    --danger:    #ff6b6b;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'Sora', sans-serif;
+    --serif:     'Lora', Georgia, serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Scanline texture overlay (signature element) ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.07) 2px,
+      rgba(0,0,0,0.07) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── Layout ── */
+  .container { max-width: 740px; margin: 0 auto; padding: 0 24px; }
+  .container--wide { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Navigation bar ── */
+  nav {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 0;
+    position: sticky;
+    top: 0;
+    background: rgba(12,14,16,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+  nav .inner {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .nav-brand {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: .04em;
+    text-decoration: none;
+  }
+  .nav-links { display: flex; gap: 28px; }
+  .nav-links a {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-dim);
+    text-decoration: none;
+    letter-spacing: .02em;
+    transition: color .2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 100px 0 80px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent) 40%, var(--accent2) 60%, transparent);
+    opacity: .5;
+  }
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .18em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 28px;
+    height: 1px;
+    background: var(--accent);
+  }
+  .hero h1 {
+    font-family: var(--sans);
+    font-size: clamp(36px, 6vw, 60px);
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text-hi);
+    letter-spacing: -.02em;
+    margin-bottom: 28px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .hero-sub {
+    font-family: var(--serif);
+    font-size: 20px;
+    line-height: 1.65;
+    color: var(--text-mid);
+    max-width: 600px;
+    margin-bottom: 44px;
+  }
+  .hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .hero-meta-item {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hero-meta-item .dot { color: var(--accent); }
+  .hero-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--bg);
+    background: var(--accent);
+    padding: 11px 22px;
+    border-radius: 4px;
+    text-decoration: none;
+    transition: opacity .2s, transform .15s;
+    letter-spacing: .02em;
+    margin-top: 8px;
+  }
+  .hero-cta:hover { opacity: .88; transform: translateY(-1px); }
+
+  /* ── Animated CPU frequency bars (hero visual) ── */
+  .cpu-viz {
+    margin: 60px 0 0;
+    padding: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--mono);
+  }
+  .cpu-viz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .06em;
+  }
+  .cpu-viz-header .live { color: var(--accent); display: flex; align-items: center; gap: 6px; }
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .4; transform: scale(.85); }
+  }
+  .core-row {
+    display: grid;
+    grid-template-columns: 56px 1fr 70px 56px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    font-size: 11px;
+  }
+  .core-label { color: var(--text-dim); }
+  .core-bar-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .core-bar {
+    height: 100%;
+    border-radius: 3px;
+    animation: flicker var(--d, 2s) ease-in-out infinite alternate;
+  }
+  @keyframes flicker {
+    from { width: var(--w-from, 60%); }
+    to   { width: var(--w-to,   80%); }
+  }
+  .core-freq { color: var(--text-mid); text-align: right; }
+  .core-epp  { font-size: 10px; padding: 2px 6px; border-radius: 2px; text-align: center; }
+  .epp-perf  { background: rgba(74,240,160,.12); color: var(--accent); }
+  .epp-bal   { background: rgba(0,198,255,.10); color: var(--accent2); }
+  .epp-pow   { background: rgba(107,117,133,.15); color: var(--text-dim); }
+
+  /* ── Article body ── */
+  article { padding: 80px 0; }
+
+  .section { margin-bottom: 80px; }
+
+  h2 {
+    font-family: var(--sans);
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-hi);
+    letter-spacing: -.01em;
+    margin-bottom: 28px;
+    line-height: 1.25;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-hi);
+    margin-bottom: 14px;
+    margin-top: 40px;
+    letter-spacing: -.01em;
+  }
+  p { color: var(--text); margin-bottom: 22px; }
+  p:last-child { margin-bottom: 0; }
+
+  strong { font-weight: 600; color: var(--text-hi); font-style: normal; }
+  em { font-style: italic; color: var(--text-mid); }
+
+  a { color: var(--accent2); text-decoration: none; border-bottom: 1px solid rgba(0,198,255,.3); transition: border-color .2s; }
+  a:hover { border-color: var(--accent2); }
+
+  /* ── Pull quote ── */
+  .pullquote {
+    border-left: 2px solid var(--accent);
+    margin: 44px 0;
+    padding: 8px 0 8px 28px;
+  }
+  .pullquote p {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-style: italic;
+    line-height: 1.55;
+    color: var(--text-hi);
+    margin: 0;
+  }
+
+  /* ── Code blocks ── */
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 24px 28px;
+    overflow-x: auto;
+    margin: 28px 0;
+    position: relative;
+  }
+  pre::before {
+    content: attr(data-lang);
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: .08em;
+  }
+  code {
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-mid);
+  }
+  pre code { color: var(--text-mid); }
+  .kw { color: #c792ea; }
+  .str { color: var(--accent); }
+  .cm { color: var(--text-dim); font-style: italic; }
+  .fn { color: var(--accent2); }
+  .num { color: var(--warn); }
+  .flag { color: #ff9cac; }
+  code.inline {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-size: 14px;
+    color: var(--accent);
+  }
+
+  /* ── Comparison table ── */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 32px 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--sans);
+    font-size: 14px;
+  }
+  thead tr { background: var(--surface); }
+  thead th {
+    padding: 14px 16px;
+    text-align: left;
+    color: var(--text-dim);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: .06em;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,.02); }
+  td {
+    padding: 13px 16px;
+    color: var(--text-mid);
+    vertical-align: middle;
+  }
+  td:first-child { color: var(--text-hi); font-weight: 500; }
+  .check { color: var(--accent); }
+  .cross { color: var(--muted); }
+  .partial { color: var(--warn); }
+  .roadmap { color: var(--text-dim); font-style: italic; font-size: 12px; }
+
+  /* ── Feature cards grid ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 36px 0;
+  }
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    transition: border-color .2s, transform .15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .feature-card:hover { border-color: var(--muted); transform: translateY(-2px); }
+  .feature-card:hover::before { opacity: 1; }
+  .feature-icon {
+    font-family: var(--mono);
+    font-size: 20px;
+    color: var(--accent);
+    margin-bottom: 14px;
+    display: block;
+  }
+  .feature-title {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-hi);
+    margin-bottom: 8px;
+  }
+  .feature-desc {
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    margin: 0;
+  }
+
+  /* ── Architecture pipeline ── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 36px 0;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .pipe-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    text-align: center;
+    min-width: 110px;
+    flex-shrink: 0;
+    transition: border-color .2s;
+  }
+  .pipe-step:hover { border-color: var(--accent); }
+  .pipe-step-name {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .pipe-step-desc {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+  .pipe-arrow {
+    color: var(--muted);
+    font-size: 16px;
+    padding: 0 6px;
+    flex-shrink: 0;
+    font-family: var(--mono);
+  }
+
+  /* ── Callout boxes ── */
+  .callout {
+    padding: 20px 24px;
+    border-radius: 6px;
+    margin: 32px 0;
+    border-left: 3px solid;
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .callout-info {
+    background: rgba(0,198,255,.06);
+    border-color: var(--accent2);
+    color: var(--text-mid);
+  }
+  .callout-warn {
+    background: rgba(245,158,11,.06);
+    border-color: var(--warn);
+    color: var(--text-mid);
+  }
+  .callout-label {
+    font-weight: 600;
+    color: var(--text-hi);
+    display: block;
+    margin-bottom: 4px;
+    font-size: 13px;
+    letter-spacing: .04em;
+  }
+
+  /* ── Roadmap timeline ── */
+  .roadmap-list { margin: 32px 0; list-style: none; }
+  .roadmap-item {
+    display: grid;
+    grid-template-columns: 80px 24px 1fr;
+    gap: 0 16px;
+    padding-bottom: 32px;
+    position: relative;
+  }
+  .roadmap-item:last-child { padding-bottom: 0; }
+  .roadmap-item::before {
+    content: '';
+    position: absolute;
+    left: 96px;
+    top: 12px;
+    bottom: -8px;
+    width: 1px;
+    background: var(--border);
+  }
+  .roadmap-item:last-child::before { display: none; }
+  .rm-version {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    padding-top: 2px;
+    text-align: right;
+  }
+  .rm-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 2px solid var(--muted);
+    margin-top: 4px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .rm-dot.done { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px rgba(74,240,160,.4); }
+  .rm-dot.active { background: var(--accent2); border-color: var(--accent2); box-shadow: 0 0 8px rgba(0,198,255,.4); }
+  .rm-content { padding-top: 0; }
+  .rm-title {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-hi);
+    margin-bottom: 4px;
+  }
+  .rm-desc {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.55;
+    margin: 0;
+  }
+
+  /* ── Stats bar ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 36px 0;
+  }
+  .stat {
+    background: var(--surface);
+    padding: 24px 20px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--accent);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: .04em;
+  }
+
+  /* ── Section divider ── */
+  .divider {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent);
+    margin: 72px 0;
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 48px 0;
+    text-align: center;
+  }
+  .footer-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .footer-brand {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: .06em;
+  }
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--text-dim);
+    text-decoration: none;
+    border: none;
+    transition: color .2s;
+  }
+  .footer-links a:hover { color: var(--text); }
+  .footer-copy {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* ── Reduced motion ── */
+  @media (prefers-reduced-motion: reduce) {
+    .core-bar, .live-dot { animation: none; }
+    .core-bar { width: var(--w-to); }
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 600px) {
+    .hero { padding: 64px 0 56px; }
+    h2 { font-size: 24px; }
+    .pipeline { gap: 0; }
+    .pipe-step { min-width: 90px; padding: 12px 10px; }
+    nav .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<nav>
+  <div class="inner">
+    <a class="nav-brand" href="https://github.com/manishklach/cpuopt-kernel">~/cpuopt-kernel</a>
+    <div class="nav-links">
+      <a href="#problem">The Problem</a>
+      <a href="#design">Design</a>
+      <a href="#features">Features</a>
+      <a href="#vision">Vision</a>
+      <a href="https://github.com/manishklach/cpuopt-kernel">GitHub ↗</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<div class="hero">
+  <div class="container">
+    <div class="hero-eyebrow">Deep Dive &nbsp;·&nbsp; Systems Engineering</div>
+    <h1>The Linux CPU tool<br>that <em>actually thinks.</em></h1>
+    <p class="hero-sub">
+      CPUOpt-Kernel is a safe, reversible, workload-aware CPU performance framework for Linux — built on the right abstractions, with a safety philosophy baked in from the first commit.
+    </p>
+    <div class="hero-meta">
+      <span class="hero-meta-item"><span class="dot">▸</span> Manish Kumar Lachireddi</span>
+      <span class="hero-meta-item"><span class="dot">▸</span> June 2026</span>
+      <span class="hero-meta-item"><span class="dot">▸</span> 12 min read</span>
+    </div>
+    <a class="hero-cta" href="https://github.com/manishklach/cpuopt-kernel">
+      View on GitHub →
+    </a>
+
+    <!-- Live CPU core animation -->
+    <div class="cpu-viz">
+      <div class="cpu-viz-header">
+        <span>LIVE CORE TELEMETRY — Intel i7-1280P</span>
+        <span class="live"><span class="live-dot"></span>MONITORING</span>
+      </div>
+      <div class="core-row">
+        <span class="core-label">core/0</span>
+        <div class="core-bar-track"><div class="core-bar" style="--w-from:72%;--w-to:88%;--d:1.8s;background:var(--accent);"></div></div>
+        <span class="core-freq">3.8 GHz</span>
+        <span class="core-epp epp-perf">performance</span>
+      </div>
+      <div class="core-row">
+        <span class="core-label">core/1</span>
+        <div class="core-bar-track"><div class="core-bar" style="--w-from:60%;--w-to:75%;--d:2.3s;background:var(--accent);"></div></div>
+        <span class="core-freq">3.2 GHz</span>
+        <span class="core-epp epp-perf">performance</span>
+      </div>
+      <div class="core-row">
+        <span class="core-label">core/4</span>
+        <div class="core-bar-track"><div class="core-bar" style="--w-from:35%;--w-to:52%;--d:2.8s;background:var(--accent2);"></div></div>
+        <span class="core-freq">2.1 GHz</span>
+        <span class="core-epp epp-bal">balance</span>
+      </div>
+      <div class="core-row">
+        <span class="core-label">core/8</span>
+        <div class="core-bar-track"><div class="core-bar" style="--w-from:18%;--w-to:28%;--d:3.4s;background:var(--text-dim);"></div></div>
+        <span class="core-freq">0.9 GHz</span>
+        <span class="core-epp epp-pow">power-save</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Article ── -->
+<article>
+  <div class="container">
+
+    <!-- SECTION 1: The Problem -->
+    <section class="section" id="problem">
+      <h2>Linux CPU performance policy is a mess. This project fixes it.</h2>
+      <p>
+        If you've ever tried to tune CPU performance on Linux, you know the feeling. You start with <code class="inline">cpupower</code>, discover it doesn't speak Intel HWP. You reach for <code class="inline">intel_pstate</code> sysfs paths, find they differ across kernel versions. You try <code class="inline">tuned</code>, which works until the daemon interferes with your custom governor. You try <code class="inline">powertop</code>, which writes to paths you didn't know existed and can't tell you what it changed.
+      </p>
+      <p>
+        The problem is structural. Linux CPU performance policy is <strong>fragmented across at least six kernel subsystems</strong>, each with its own sysfs interface, its own semantics, and its own opinions about what "performance" means.
+      </p>
+
+      <pre data-lang="SYSFS FRAGMENTATION"><code><span class="cm"># Six interfaces, zero coordination</span>
+/sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+/sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference
+/sys/devices/system/cpu/intel_pstate/no_turbo
+/sys/devices/system/cpu/intel_pstate/max_perf_pct
+/sys/class/thermal/thermal_zone*/trip_point_*/temp
+/sys/devices/system/cpu/cpuidle/state*/disable
+/sys/devices/system/cpu/smt/control
+/dev/cpu/*/msr  <span class="cm"># raw registers — here be dragons</span></code></pre>
+
+      <p>
+        <a href="https://github.com/manishklach/cpuopt-kernel">CPUOpt-Kernel</a> approaches this differently. Instead of wrapping one interface or writing a daemon that fights with the kernel, it builds a <strong>unified capability map</strong> from whatever the running kernel actually exposes — and applies changes through a pipeline that is safe, reversible, and transparent by construction.
+      </p>
+
+      <div class="callout callout-info">
+        <span class="callout-label">KEY INSIGHT</span>
+        The interesting engineering question isn't "how do we apply a CPU profile." It's "how do we apply it safely, preview it before touching anything, and undo it exactly." That's the problem CPUOpt-Kernel is solving.
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- SECTION 2: Design -->
+    <section class="section" id="design">
+      <h2>A safety-first pipeline, not a script</h2>
+      <p>
+        The architecture is layered deliberately. Every action flows through a pipeline where each stage can abort cleanly, and the user always has a preview before a single byte changes on disk.
+      </p>
+
+      <div class="pipeline">
+        <div class="pipe-step">
+          <span class="pipe-step-name">DISCOVER</span>
+          <span class="pipe-step-desc">Read sysfs, build capability map</span>
+        </div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step">
+          <span class="pipe-step-name">PROPOSE</span>
+          <span class="pipe-step-desc">Profile → write list</span>
+        </div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step">
+          <span class="pipe-step-name">VALIDATE</span>
+          <span class="pipe-step-desc">Check paths &amp; values</span>
+        </div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step">
+          <span class="pipe-step-name">SNAPSHOT</span>
+          <span class="pipe-step-desc">Save before state</span>
+        </div>
+        <span class="pipe-arrow">→</span>
+        <div class="pipe-step">
+          <span class="pipe-step-name">APPLY</span>
+          <span class="pipe-step-desc">Write or dry-run</span>
+        </div>
+      </div>
+
+      <h3>The dry-run guarantee</h3>
+      <p>
+        Every profile application supports <code class="inline">--dry-run --diff</code>, which performs exactly zero filesystem modifications — including no snapshot creation — and prints a table of every write that <em>would</em> have happened. This isn't a courtesy flag. It's the primary interface for understanding what a profile does before committing to it.
+      </p>
+
+      <pre data-lang="BASH"><code><span class="cm"># Preview the performance profile without touching anything</span>
+sudo cpuoptctl profile performance <span class="flag">--dry-run --diff</span>
+
+<span class="cm"># Output:</span>
+<span class="str">DRY RUN — no changes written</span>
+
+PATH                                                         CURRENT              PROPOSED
+policy0/energy_performance_preference                        balance_performance  <span class="str">performance</span>
+policy0/scaling_governor                                     powersave            <span class="str">performance</span>
+policy4/energy_performance_preference                        balance_performance  <span class="str">performance</span>
+intel_pstate/no_turbo                                        <span class="num">1</span>                    <span class="str">0</span>
+
+<span class="num">4</span> writes proposed, <span class="num">0</span> writes executed.</code></pre>
+
+      <h3>The sysfs root abstraction</h3>
+      <p>
+        Every path in the codebase is prefixed with a configurable <code class="inline">--sysfs-root</code>. The default is <code class="inline">/</code>, meaning real hardware. But passing a fixture directory redirects all sysfs access to a static file tree — no root, no real hardware, no kernel involvement.
+      </p>
+      <p>
+        This is one of the more underappreciated design decisions in the project. It means the entire discovery and profile logic is testable in CI without a privileged container, without mocking at the system call level, and without hardware in the loop. The fixture trees live under <code class="inline">tests/fixtures/intel_hwp/</code> and faithfully model what a real Intel HWP system exposes.
+      </p>
+
+      <div class="pullquote">
+        <p>"A sysfs abstraction that makes the whole tool testable without root isn't an implementation detail — it's the difference between a script that works on one machine and a tool that works on all of them."</p>
+      </div>
+
+      <h3>Snapshot and restore</h3>
+      <p>
+        Before any <code class="inline">apply</code> run, the current value of every path that will be written is read and saved to <code class="inline">last_state.json</code>. The <code class="inline">restore</code> command replays those values in reverse. No daemon, no background service, no side channel — just a JSON file and a reverse traversal.
+      </p>
+
+      <pre data-lang="JSON"><code><span class="cm">// ~/.local/share/cpuopt/last_state.json</span>
+{
+  <span class="str">"timestamp"</span>: <span class="str">"2026-06-28T10:32:00Z"</span>,
+  <span class="str">"profile_applied"</span>: <span class="str">"performance"</span>,
+  <span class="str">"writes"</span>: [
+    {
+      <span class="str">"path"</span>: <span class="str">"/sys/devices/system/cpu/cpufreq/policy0/energy_performance_preference"</span>,
+      <span class="str">"before"</span>: <span class="str">"balance_performance"</span>,
+      <span class="str">"after"</span>: <span class="str">"performance"</span>
+    }
+  ]
+}</code></pre>
+    </section>
+
+    <hr class="divider">
+
+    <!-- SECTION 3: Features -->
+    <section class="section" id="features">
+      <h2>What it actually does</h2>
+      <p>
+        The command surface is organized by intent: discover what the system exposes, get advice without writing anything, apply a profile, observe the result, and undo it cleanly.
+      </p>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <span class="feature-icon">⬡</span>
+          <div class="feature-title">Discovery engine</div>
+          <p class="feature-desc">Reads cpufreq, intel_pstate, thermal zones, idle states, and SMT topology from sysfs. Produces a structured capability map as JSON. Works on any kernel that exposes these paths.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">≋</span>
+          <div class="feature-title">Doctor &amp; recommend</div>
+          <p class="feature-desc">Heuristic analysis of your current configuration with workload-aware profile suggestions. No writes, no changes — pure advisory output. Pass a workload hint to get a targeted recommendation.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">◈</span>
+          <div class="feature-title">Named profiles</div>
+          <p class="feature-desc">performance, balanced, latency, quiet, ai-inference — each defined as a set of validated sysfs writes with documented tradeoffs. The explain command documents every change before you apply it.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">↺</span>
+          <div class="feature-title">Snapshot restore</div>
+          <p class="feature-desc">Atomic pre-apply snapshot. The restore command replays the before state exactly. If the snapshot file is missing or corrupt, restore exits clearly rather than guessing.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">▦</span>
+          <div class="feature-title">Live monitor</div>
+          <p class="feature-desc">Real-time telemetry loop: per-policy frequency, EPP, turbo status, thermal zone temperatures. Configurable interval. Output is structured enough to pipe into a dashboard.</p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">⊕</span>
+          <div class="feature-title">MSR telemetry</div>
+          <p class="feature-desc">Read-only MSR access via /dev/cpu/*/msr against a curated allowlist. Intel HWP request register, energy bias hint, package temperature. Zero writes to MSR — ever.</p>
+        </div>
+      </div>
+
+      <h3>The safety model as a feature</h3>
+      <p>
+        Most CPU tools treat safety as a constraint — something that limits what they can do. CPUOpt-Kernel treats it as the product. The explicit list of things it will never do is as important as what it does.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>CPUOpt-Kernel</th>
+              <th>cpupower</th>
+              <th>tuned</th>
+              <th>TLP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Dry-run / diff preview</td>
+              <td class="check">✓</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+            </tr>
+            <tr>
+              <td>Snapshot &amp; restore</td>
+              <td class="check">✓</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+            </tr>
+            <tr>
+              <td>Workload-aware profiles</td>
+              <td class="check">✓</td>
+              <td class="cross">✗</td>
+              <td class="partial">partial</td>
+              <td class="cross">✗</td>
+            </tr>
+            <tr>
+              <td>No raw MSR writes</td>
+              <td class="check">✓</td>
+              <td class="cross">✗</td>
+              <td class="check">✓</td>
+              <td class="check">✓</td>
+            </tr>
+            <tr>
+              <td>No thermal bypass</td>
+              <td class="check">✓</td>
+              <td class="check">✓</td>
+              <td class="cross">✗</td>
+              <td class="check">✓</td>
+            </tr>
+            <tr>
+              <td>Fixture-backed tests (no root)</td>
+              <td class="check">✓</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+            </tr>
+            <tr>
+              <td>JSON output</td>
+              <td class="check">✓</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+              <td class="cross">✗</td>
+            </tr>
+            <tr>
+              <td>AMD amd-pstate</td>
+              <td class="roadmap">roadmap v0.2</td>
+              <td class="partial">partial</td>
+              <td class="partial">partial</td>
+              <td class="partial">partial</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Getting started</h3>
+      <pre data-lang="BASH"><code><span class="cm"># Install (Python 3.10+)</span>
+<span class="fn">pip</span> install <span class="str">cpuoptctl</span>           <span class="cm"># or: pipx install cpuoptctl</span>
+
+<span class="cm"># No root — inspect and advise</span>
+<span class="fn">cpuoptctl</span> doctor               <span class="cm"># what does your system expose?</span>
+<span class="fn">cpuoptctl</span> recommend             <span class="cm"># what profile fits your workload?</span>
+<span class="fn">cpuoptctl</span> recommend <span class="flag">--workload</span> <span class="str">llama-inference</span>
+
+<span class="cm"># Root — apply profiles (snapshot taken automatically)</span>
+sudo <span class="fn">cpuoptctl</span> profile performance <span class="flag">--dry-run --diff</span>   <span class="cm"># preview</span>
+sudo <span class="fn">cpuoptctl</span> profile performance                     <span class="cm"># apply</span>
+sudo <span class="fn">cpuoptctl</span> restore                                 <span class="cm"># undo</span>
+
+<span class="cm"># Observe</span>
+sudo <span class="fn">cpuoptctl</span> monitor <span class="flag">--interval</span> <span class="num">2</span></code></pre>
+    </section>
+
+    <hr class="divider">
+
+    <!-- SECTION 4: Vision -->
+    <section class="section" id="vision">
+      <h2>Where this is going</h2>
+
+      <div class="stats-row">
+        <div class="stat">
+          <span class="stat-num">6+</span>
+          <span class="stat-label">kernel subsystems unified</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">0</span>
+          <span class="stat-label">MSR writes, ever</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">100%</span>
+          <span class="stat-label">reversible by design</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">GPL‑2</span>
+          <span class="stat-label">open source</span>
+        </div>
+      </div>
+
+      <p>
+        The v0.1 Intel MVP validates the architecture. The real engineering work starts now. Three directions define the project's trajectory toward something genuinely novel in the Linux tooling space.
+      </p>
+
+      <ul class="roadmap-list">
+        <li class="roadmap-item">
+          <span class="rm-version">v0.1.0</span>
+          <div class="rm-dot done"></div>
+          <div class="rm-content">
+            <div class="rm-title">Intel MVP — discover, profile, restore</div>
+            <p class="rm-desc">Full Intel HWP / EPP support. Dry-run, snapshot, restore. Doctor, recommend, monitor. Fixture-backed test suite. This is the foundation everything else builds on.</p>
+          </div>
+        </li>
+        <li class="roadmap-item">
+          <span class="rm-version">v0.2.0</span>
+          <div class="rm-dot active"></div>
+          <div class="rm-content">
+            <div class="rm-title">AMD amd-pstate + PyPI release</div>
+            <p class="rm-desc">Guided mode, CPPC, EPP parity with Intel. Coverage gate in CI. Trusted publishing to PyPI so <code class="inline">pipx install cpuoptctl</code> just works. This is when the project becomes accessible.</p>
+          </div>
+        </li>
+        <li class="roadmap-item">
+          <span class="rm-version">v0.3.0</span>
+          <div class="rm-dot"></div>
+          <div class="rm-content">
+            <div class="rm-title">ARM SCMI &amp; heterogeneous topology</div>
+            <p class="rm-desc">big.LITTLE and DynamIQ cluster-aware profiles. This is what makes the project relevant to server ARM, embedded Linux, and the increasingly heterogeneous laptop architectures coming from Qualcomm and Apple-adjacent designs.</p>
+          </div>
+        </li>
+        <li class="roadmap-item">
+          <span class="rm-version">v0.4.0</span>
+          <div class="rm-dot"></div>
+          <div class="rm-content">
+            <div class="rm-title">Workload autodetection</div>
+            <p class="rm-desc">Watch /proc/*/stat, cgroup accounting, and perf counters to classify the running workload in real time — then propose or automatically switch the profile. No other safe, sysfs-first CPU tool does this.</p>
+          </div>
+        </li>
+        <li class="roadmap-item">
+          <span class="rm-version">v1.0.0</span>
+          <div class="rm-dot"></div>
+          <div class="rm-content">
+            <div class="rm-title">systemd-cpuopt — first-class Linux service</div>
+            <p class="rm-desc">D-Bus policy API, udev hotplug rules, OEM preset bundles, profile-as-code in TOML, community hardware registry fed by <code class="inline">discover --json</code>. The systemd of CPU performance policy. This is where the LWN article gets written.</p>
+          </div>
+        </li>
+      </ul>
+
+      <div class="callout callout-warn">
+        <span class="callout-label">CONTRIBUTE</span>
+        The most useful contribution right now is running <code class="inline">cpuoptctl discover --json</code> on your hardware and opening a Discussion on GitHub with the output. This builds the hardware dataset that makes AMD and ARM backends possible. No code required.
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- Closing -->
+    <section class="section">
+      <h2>Why this matters</h2>
+      <p>
+        The Linux CPU tooling landscape has been stuck for years. The tools that exist either require a daemon, write to paths they shouldn't, can't be previewed, can't be undone, or work on exactly one vendor's hardware. CPUOpt-Kernel is the first serious attempt to build a unified, safe, reversible CPU performance layer that treats the kernel interfaces as the actual API instead of routing around them.
+      </p>
+      <p>
+        The architecture is right. The safety philosophy is right. The sysfs root abstraction that makes it testable without root is genuinely clever systems engineering. What the project needs now is community: contributors who run hardware the Intel fixtures don't cover, engineers who've hit the same fragmentation problem and want a better tool, and systems programmers who want to help build the AMD and ARM backends.
+      </p>
+      <p>
+        If you've ever reached for <code class="inline">cpupower</code>, written a one-off shell script that cat'd something into a sysfs path and immediately forgotten what it did, or spent an afternoon fighting <code class="inline">tuned</code> profiles — this project is for you.
+      </p>
+
+      <div style="margin-top: 44px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center;">
+        <a href="https://github.com/manishklach/cpuopt-kernel" style="display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;font-weight:500;color:var(--bg);background:var(--accent);padding:12px 24px;border-radius:4px;text-decoration:none;border:none;transition:opacity .2s;">
+          Star on GitHub →
+        </a>
+        <a href="https://github.com/manishklach/cpuopt-kernel/discussions" style="display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;font-weight:500;color:var(--accent);background:transparent;padding:12px 24px;border-radius:4px;text-decoration:none;border:1px solid var(--accent);transition:opacity .2s;">
+          Join the discussion →
+        </a>
+      </div>
+    </section>
+
+  </div><!-- /container -->
+</article>
+
+<!-- ── Footer ── -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">cpuopt-kernel</div>
+      <div class="footer-links">
+        <a href="https://github.com/manishklach/cpuopt-kernel">GitHub</a>
+        <a href="https://github.com/manishklach/cpuopt-kernel/blob/main/CHANGELOG.md">Changelog</a>
+        <a href="https://github.com/manishklach/cpuopt-kernel/issues">Issues</a>
+        <a href="https://github.com/manishklach/cpuopt-kernel/discussions">Discussions</a>
+      </div>
+      <div class="footer-copy">GPL-2.0-only · Built by Manish Kumar Lachireddi</div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
